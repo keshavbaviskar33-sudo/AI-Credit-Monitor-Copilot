@@ -17,6 +17,7 @@ dependencies = [
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.5,<3",
     "python-dotenv>=1.0,<2",
+    "truststore>=0.9,<1",
 ]
 
 [project.optional-dependencies]

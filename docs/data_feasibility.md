@@ -128,7 +128,7 @@ unless access becomes available.
 | DR-3 Same features as inference | ⚠️ likely skew | ✅ | ❌ |
 | DR-4 Defined label | ✅ bankruptcy next year | ✅ bankruptcy (large firms) | ✅ multiple horizons |
 | DR-5 Temporal / point-in-time | ⚠️ fiscal year only | ✅ filing dates | ⚠️ limited |
-| DR-6 Enough events | ✅ likely | ✅ 299–426 linkable (2026-09-14) | ✅ |
+| DR-6 Enough events | ✅ likely | ✅ 178 usable, full-scale audit (2026-09-14) | ✅ |
 | DR-7 Licence | ✅ CC-BY-4.0 (GitHub repo; Kaggle mirror disagrees, claims CC0) | ✅ BRD: commercial+academic use, attribution required · ✅ SEC public | ✅ CC BY 4.0 |
 | DR-8 Industry | ✅ `Division`/`MajorGroup` (SIC) | ✅ SIC | ❌ |
 | Effort | Low | High | Low |
@@ -156,9 +156,10 @@ start of Phase 3**, not a choice made now on unverified details:
    data dictionary for the chosen dataset.
 
 **Gate result (2026-09-14): both licences clear, and B clears the event-count
-heuristic (299–426 linkable cases against a 100+ bar) → Candidate B is the
-primary training source, with Candidate A kept as an external comparison.**
-Recorded as [D-013](decision_log.md). Full details in §7.
+heuristic (178 usable cases, confirmed at full scale, against a 100+ bar) →
+Candidate B is the primary training source, with Candidate A kept as an
+external comparison.** Recorded as [D-013](decision_log.md). Full details
+in §7.
 
 ## 6. Phase 3 decision gate — findings (2026-09-14)
 
@@ -189,19 +190,33 @@ live sources rather than the desk research above.
 table (`Florida-UCLA-LoPucki Bankruptcy Research Database 1-12-2023.zip`,
 1,218 cases, 217 fields).
 - 992 of 1,218 cases carry a non-null `CikBefore`.
-- **426 cases were filed 2009 or later with a CIK; 299 were filed 2011 or
-  later with a CIK** — both above the "100+" working heuristic from §5.
-- Spot-checked SEC's `companyfacts` API for 4 of those companies (21st
-  Century Oncology, AAC Holdings, A123 Systems, A.M. Castle & Co.): all
-  resolved with real XBRL data; per-fact metadata (`accn`, `form`, `fy`,
-  `fp`, `filed`, `end`) is present exactly as needed for the point-in-time
-  rule ([D-008](decision_log.md)); 3 of 4 had ample pre-bankruptcy annual
-  history (14–23 datapoints), 1 had only its single pre-bankruptcy 10-K
-  (which itself reports 2 fiscal years of comparatives).
-- **Not yet done:** confirming ≥2 prior annual periods across all
-  ~300–426 linkable cases (only 4 were spot-checked), and building the full
-  negative-class population of non-bankrupt company-years. Both are Phase 3
-  implementation work, not part of this gate.
+- Initial 4-company spot-check (21st Century Oncology, AAC Holdings, A123
+  Systems, A.M. Castle & Co.): all resolved with real XBRL data; per-fact
+  metadata (`accn`, `form`, `fy`, `fp`, `filed`, `end`) is present exactly as
+  needed for the point-in-time rule ([D-008](decision_log.md)); 3 of 4 had
+  ample pre-bankruptcy annual history, 1 had only its single pre-bankruptcy
+  10-K.
+- **Full-scale run** (`scripts/phase3_data_audit.py`, all 992 cases with a
+  CIK, cached under `data/raw/`): 527 predate the XBRL era (bankruptcy filed
+  before 2008) and were skipped; of the remaining 465, 144 returned no XBRL
+  data at all (`companyfacts` 404 — concentrated in 2008–2011, matching
+  XBRL's staggered phase-in by filer size, not a data bug); 321 returned
+  real data, of which **178 have ≥2 pre-bankruptcy annual XBRL periods**.
+  Full breakdown in [data_dictionary.md §5](data_dictionary.md).
+- **178 usable positive events** clears the "100+" heuristic, but is well
+  below the earlier rough estimate of 299–426 "linkable" cases — that
+  estimate only checked for a CIK + a plausible year, not for actual usable
+  pre-filing history. 178 events spread across a ~2009–2022 out-of-time
+  design is a real statistical-power constraint for Phase 8/9, not just a
+  headline number to clear a bar.
+- **Negative-class universe (rough):** of 8,020 SEC filers with a ticker,
+  939 unique CIKs have ever appeared in BRD at all, leaving ~7,973
+  candidates — comfortably large, but unfiltered by SIC/history requirements
+  (see [data_dictionary.md §5](data_dictionary.md)).
+- **Not yet done:** applying the D-006 financial-sector SIC exclusions to
+  the negative universe, and investigating the 144 "no XBRL" cases enough to
+  decide whether any are recoverable (e.g. a stale `CikBefore` that should
+  map to a successor CIK). Both are Phase 5 work.
 
 **Step 3 — inspect Candidate A.** Downloaded the live CSV
 (`american_bankruptcy_dataset.csv`, 78,682 rows × 23 columns).

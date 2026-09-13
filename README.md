@@ -13,11 +13,12 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 3 of 20 — Data acquisition & understanding (in progress).**
-Phase 2 (engineering environment) is complete. Phase 3's dataset decision
-gate is resolved: training data will be a self-built SEC XBRL + bankruptcy-
-records dataset ([D-013](docs/decision_log.md)). Building the linked dataset
-itself is next; no product code yet.
+**Phase 4 of 20 — Document extraction (next).**
+Phase 3 (data acquisition & understanding) is complete: the training dataset
+is a self-built SEC XBRL + bankruptcy-records dataset ([D-013](docs/decision_log.md)),
+audited at full scale — 178 usable positive events, ~7,973-company candidate
+negative universe (see [data_dictionary.md](docs/data_dictionary.md)). No
+product code yet.
 
 ## Environment setup
 
@@ -42,6 +43,7 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Assumptions](docs/assumptions.md) | What the design depends on and how each assumption will be checked |
 | [Risks](docs/risks.md) | Risk register with mitigations |
 | [Data feasibility](docs/data_feasibility.md) | Candidate training data and the Phase 3 decision gate |
+| [Data dictionary](docs/data_dictionary.md) | Chosen training dataset: unit of observation, target, features, provenance |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
 | [Roadmap](docs/roadmap.md) | Phase plan and status |
