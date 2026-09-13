@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Phase 1 complete — decisions accepted; Phase 2 next |
-| **Date** | 2026-09-13 |
+| **Status** | Phase 2 complete — decisions accepted; Phase 3 next |
+| **Date** | 2026-09-14 |
 
 Phases are completed one at a time. Each phase ends with tests/checks, a
 status report and an explicit go-ahead before the next phase starts.
@@ -13,7 +13,7 @@ status report and an explicit go-ahead before the next phase starts.
 | # | Phase | Status | Amendment ([D-009](decision_log.md)) |
 |---|---|---|---|
 | 1 | Problem definition & product design | ✅ Complete | Added data feasibility research and decision log |
-| 2 | Engineering environment & repository | Not started | Confirm Python 3.12 library compatibility; initial UI framework choice |
+| 2 | Engineering environment & repository | ✅ Complete | Confirmed Python 3.12 library compatibility ([engineering_setup.md](engineering_setup.md)); initial UI framework accepted ([D-012](decision_log.md)) |
 | 3 | Data acquisition & understanding | Not started | Starts with the dataset decision gate (D-011); verifies SEC API details |
 | 4 | Document extraction | Not started | Builds a golden evaluation set of 10-K statements with XBRL reference values |
 | 5 | Financial statement parsing | Not started | Introduces typed domain models with provenance; XBRL ingestion with point-in-time rule (D-005, D-008) |

@@ -254,5 +254,5 @@ Full register: [risks.md](risks.md). The most consequential for product design:
 | Q1 | Which training dataset and target definition? (candidates and decision gate in [data_feasibility.md](data_feasibility.md)) | Phase 3 |
 | ~~Q2~~ | ~~Approve proposed decisions D-004 – D-011?~~ Resolved 2026-09-13: all accepted | — |
 | Q3 | LLM provider and budget | Phase 12 |
-| Q4 | UI framework (Streamlit vs. API + web frontend) | Phase 2 (initial), Phase 14 (final) |
+| Q4 | ~~UI framework (Streamlit vs. API + web frontend)~~ Resolved 2026-09-14: Streamlit for Phases 2-14 ([D-012](decision_log.md)); revisit at Phase 14 | Phase 2 (initial), Phase 14 (final) |
 | Q5 | Which industries to support after MVP, and what benchmark data exists for industry-aware thresholds | Phase 7+ |

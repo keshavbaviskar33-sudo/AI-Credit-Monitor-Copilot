@@ -1,0 +1,21 @@
+# Normalize line endings for everything Git considers text, regardless of a
+# contributor's local core.autocrlf setting. This is what stops Git's
+# "LF will be replaced by CRLF" warnings: every text file is stored as LF in
+# the repository and checked out as LF, on every platform.
+* text=auto eol=lf
+
+# Windows-only scripts genuinely need CRLF to run correctly via cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Do not diff or line-ending-normalize binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.ico binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary

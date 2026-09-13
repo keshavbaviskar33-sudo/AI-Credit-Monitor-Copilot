@@ -13,8 +13,22 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 1 of 20 — Problem definition & product design (complete).**
-No application code yet.
+**Phase 2 of 20 — Engineering environment & repository (complete).**
+Environment, dependencies, config, logging, tests and linting are set up; no
+product code yet. Initial UI framework: Streamlit ([D-012](docs/decision_log.md)).
+
+## Environment setup
+
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
+```
+uv sync --extra dev       # base dependencies + tests/lint/types
+cp .env.example .env      # then fill in SEC_USER_AGENT at minimum
+uv run pytest
+```
+
+See [engineering_setup.md](docs/engineering_setup.md) for the full toolchain,
+the Python 3.12 library compatibility check, and all `uv` commands.
 
 ## Documentation
 
@@ -26,6 +40,7 @@ No application code yet.
 | [Assumptions](docs/assumptions.md) | What the design depends on and how each assumption will be checked |
 | [Risks](docs/risks.md) | Risk register with mitigations |
 | [Data feasibility](docs/data_feasibility.md) | Candidate training data and the Phase 3 decision gate |
+| [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
 | [Roadmap](docs/roadmap.md) | Phase plan and status |
 

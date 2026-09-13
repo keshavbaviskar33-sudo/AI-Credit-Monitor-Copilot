@@ -19,6 +19,7 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-009](#d-009-roadmap-amendments) | Roadmap amendments | Accepted | 2026-09-13 |
 | [D-010](#d-010-ml-output-is-not-called-a-probability-of-default) | ML output is not called a "probability of default" | Accepted | 2026-09-13 |
 | [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) | Training data chosen through a Phase 3 decision gate | Accepted | 2026-09-13 |
+| [D-012](#d-012-initial-ui-framework-streamlit) | Initial UI framework: Streamlit | Accepted | 2026-09-14 |
 
 ---
 
@@ -116,3 +117,16 @@ a reversed decision gets a new entry that supersedes the old one.
 **Status:** Accepted (delegated by project owner, 2026-09-13) — details in [data_feasibility.md §5](data_feasibility.md)
 
 **Decision.** Do not select the training dataset on unverified details. Phase 3 begins with licence checks, a feasibility spike on a self-built SEC + bankruptcy-records dataset, and an inspection of the public US bankruptcy dataset, followed by a recorded decision.
+
+## D-012 Initial UI framework: Streamlit
+**Status:** Accepted (project owner, 2026-09-14) — open question Q4 in [product_requirements.md](product_requirements.md), initial choice due Phase 2, final choice due Phase 14.
+
+**Context.** The MVP needs one analyst-facing surface: a watchlist and a per-company view built around approve/modify/reject review (Phases 13-14), reading a small amount of server-side state (drafts, reviews, filings). Non-goals rule out production infrastructure — no microservices, no multi-tenant SaaS ([scope.md §5](scope.md)). Two realistic options: (a) Streamlit, a single Python process rendering the UI; (b) a small API (FastAPI) plus a separate web frontend (React or similar).
+
+**Decision.** Start with **Streamlit** for Phases 2-14. It renders tables, forms and simple charts directly from the pandas/pydantic objects the rest of the pipeline already produces, needs no separate frontend build or API contract to maintain, and matches the single-analyst, non-real-time MVP scope. `pyproject.toml` declares it under the `ui` optional dependency group.
+
+**Alternatives.**
+- **API + web frontend (FastAPI + React).** More control over interaction design and a clearer seam for a future multi-user product, but doubles the surfaces to build and test for no MVP requirement it unlocks.
+- **Dash / Panel.** Similar trade-offs to Streamlit; Streamlit chosen for ecosystem maturity and the team's familiarity.
+
+**Consequences.** Review actions (approve/modify/reject) are implemented as Streamlit forms/session state rather than API endpoints, so Phase 13's persistence layer should expose plain Python functions, not a network API, to avoid building a client only Streamlit will call. If Phase 14 needs richer interaction (e.g. concurrent multi-analyst editing) than Streamlit supports well, this decision is revisited then with real UI requirements in hand rather than guessed now — the log entry gets a superseding decision, not a silent change.
