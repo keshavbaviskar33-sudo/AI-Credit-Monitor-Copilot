@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Phase 2 complete — decisions accepted; Phase 3 next |
+| **Status** | Phase 2 complete; Phase 3 decision gate resolved ([D-013](decision_log.md)) — dataset construction next |
 | **Date** | 2026-09-14 |
 
 Phases are completed one at a time. Each phase ends with tests/checks, a
@@ -14,7 +14,7 @@ status report and an explicit go-ahead before the next phase starts.
 |---|---|---|---|
 | 1 | Problem definition & product design | ✅ Complete | Added data feasibility research and decision log |
 | 2 | Engineering environment & repository | ✅ Complete | Confirmed Python 3.12 library compatibility ([engineering_setup.md](engineering_setup.md)); initial UI framework accepted ([D-012](decision_log.md)) |
-| 3 | Data acquisition & understanding | Not started | Starts with the dataset decision gate (D-011); verifies SEC API details |
+| 3 | Data acquisition & understanding | 🟡 In progress | Dataset decision gate resolved: Candidate B primary ([D-013](decision_log.md), [data_feasibility.md §6](data_feasibility.md)). Remaining: entity linkage at scale, point-in-time extraction, negative-class population, data dictionary |
 | 4 | Document extraction | Not started | Builds a golden evaluation set of 10-K statements with XBRL reference values |
 | 5 | Financial statement parsing | Not started | Introduces typed domain models with provenance; XBRL ingestion with point-in-time rule (D-005, D-008) |
 | 6 | Deterministic ratio engine | Not started | Ratio definitions shared with ML features |

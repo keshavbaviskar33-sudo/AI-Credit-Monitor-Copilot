@@ -20,6 +20,7 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-010](#d-010-ml-output-is-not-called-a-probability-of-default) | ML output is not called a "probability of default" | Accepted | 2026-09-13 |
 | [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) | Training data chosen through a Phase 3 decision gate | Accepted | 2026-09-13 |
 | [D-012](#d-012-initial-ui-framework-streamlit) | Initial UI framework: Streamlit | Accepted | 2026-09-14 |
+| [D-013](#d-013-training-data-candidate-b-self-built-sec--brd-as-primary) | Training data: Candidate B (self-built SEC + BRD) as primary | Accepted | 2026-09-14 |
 
 ---
 
@@ -130,3 +131,21 @@ a reversed decision gets a new entry that supersedes the old one.
 - **Dash / Panel.** Similar trade-offs to Streamlit; Streamlit chosen for ecosystem maturity and the team's familiarity.
 
 **Consequences.** Review actions (approve/modify/reject) are implemented as Streamlit forms/session state rather than API endpoints, so Phase 13's persistence layer should expose plain Python functions, not a network API, to avoid building a client only Streamlit will call. If Phase 14 needs richer interaction (e.g. concurrent multi-analyst editing) than Streamlit supports well, this decision is revisited then with real UI requirements in hand rather than guessed now — the log entry gets a superseding decision, not a silent change.
+
+## D-013 Training data: Candidate B (self-built SEC + BRD) as primary
+**Status:** Accepted (project owner, 2026-09-14) — resolves the [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) gate; full evidence in [data_feasibility.md §6](data_feasibility.md).
+
+**Context.** D-011 set a Phase 3 gate before choosing between Candidate A (an anonymised, off-the-shelf US bankruptcy dataset) and Candidate B (a self-built dataset joining SEC XBRL financials to the Florida-UCLA-LoPucki Bankruptcy Research Database, BRD, by CIK), with a documented decision rule: use B as primary if it yields on the order of 100+ linkable bankruptcy events with usable history, otherwise fall back to A.
+
+**What the gate found (2026-09-14, against live sources, not desk research):**
+- **Licences clear on both.** The BRD User's Manual licenses the Cases table "for both commercial and academic use," with an attribution requirement and no redistribution ban found. Candidate A's source repo is CC-BY-4.0 (its Kaggle mirror's own metadata claims CC0 instead; treated as CC-BY-4.0, the more conservative reading).
+- **Candidate B clears the event-count bar.** Of 1,218 BRD cases, 992 carry a CIK; 426 were filed 2009+ with a CIK and 299 were filed 2011+ with a CIK — both above the "100+" heuristic. A 4-company spot-check against SEC's `companyfacts` API confirmed real XBRL data with per-fact `accn`/`form`/`fy`/`fp`/`filed` metadata (needed for the point-in-time rule, [D-008](decision_log.md)), and ample pre-bankruptcy annual history in 3 of 4 cases.
+- **Candidate A's licence and structure are now confirmed**, not merely believed: CC-BY-4.0, 78,682 firm-years (5,220 `failed`, ≈6.6%), features X1–X13 identified (X14–X18 still unconfirmed), industry via `Division`/`MajorGroup`.
+
+**Decision.** **Candidate B (self-built SEC XBRL + BRD) is the primary training dataset.** Candidate A is kept as an external comparison/benchmark only — never as production training data, per the same reasoning as Candidate C (Polish UCI) in [data_feasibility.md §3.4](data_feasibility.md).
+
+**Consequences.**
+- Phase 3 now has committed engineering work: build the CIK-linked entity table, the point-in-time feature extraction from `companyfacts`, and the negative-class (non-bankrupt company-year) population — this is real data-layer engineering, not throwaway spike code.
+- Two things the gate did **not** finish, and Phase 3 must: (a) confirm ≥2 usable prior annual periods across all ~300–426 linkable cases (only 4 were spot-checked), (b) pin down Candidate A's X14–X18 feature definitions before using it as a comparison baseline.
+- BRD's licence requires citing "Florida-UCLA-LoPucki Bankruptcy Research Database" as the data source wherever it is used; Candidate A's use follows its GitHub README's citation request.
+- BRD stopped updating after its December 2022 release, so no bankruptcies after that date are labelled — a stated limitation for any "recent" demo companies (already noted as a scope constraint, [scope.md §6](scope.md)).

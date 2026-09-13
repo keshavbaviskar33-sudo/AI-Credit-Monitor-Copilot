@@ -13,9 +13,11 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 2 of 20 — Engineering environment & repository (complete).**
-Environment, dependencies, config, logging, tests and linting are set up; no
-product code yet. Initial UI framework: Streamlit ([D-012](docs/decision_log.md)).
+**Phase 3 of 20 — Data acquisition & understanding (in progress).**
+Phase 2 (engineering environment) is complete. Phase 3's dataset decision
+gate is resolved: training data will be a self-built SEC XBRL + bankruptcy-
+records dataset ([D-013](docs/decision_log.md)). Building the linked dataset
+itself is next; no product code yet.
 
 ## Environment setup
 

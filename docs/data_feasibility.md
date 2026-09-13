@@ -2,14 +2,16 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 — Phase 1 desk research (no data downloaded, no modelling) |
-| **Date** | 2026-09-13 |
+| **Status** | v0.2 — Phase 1 desk research, plus the Phase 3 decision gate ([D-013](decision_log.md)) run live against real sources |
+| **Date** | 2026-09-13 (desk research); 2026-09-14 (decision gate, §6) |
 | **Related** | [assumptions.md](assumptions.md) (A-04 – A-09, A-11, A-13, A-21) · [risks.md](risks.md) (R-01 – R-05, R-12) |
 
 **Purpose.** Decide early whether the ML layer is feasible for a *US corporate
 monitoring* product, and what must be settled in Phase 3. Facts are marked
-**verified** (checked at the linked source on 2026-09-13) or **unverified**
-(believed but not yet confirmed — must be checked before relying on it).
+**verified** (checked at the linked source) or **unverified** (believed but
+not yet confirmed — must be checked before relying on it). §1–§5 are the
+original Phase 1 desk research (2026-09-13); §6 records the Phase 3 decision
+gate run against live sources on 2026-09-14.
 
 ---
 
@@ -54,10 +56,10 @@ Sources: [GitHub: sowide/bankruptcy_dataset](https://github.com/sowide/bankruptc
 | Suggested split | Train 1999–2011, validation 2012–2014, test 2015–2018 (out-of-time) | Verified |
 | Missing values | Authors state none | Verified (as claimed by authors) |
 | Identifiers | **Anonymised**; authors state a non-anonymised version cannot be released due to the licence under which data was retrieved | Verified |
-| Features | Believed to be ~18 raw accounting variables (e.g. current assets, EBIT, total liabilities, market value) | **Unverified** |
-| Industry field | Unknown | **Unverified** |
-| Licence for reuse | Not identified | **Unverified** |
-| Class balance | Not stated in the README | **Unverified** |
+| Features | 18 raw accounting variables, X1–X18. Confirmed X1–X13 from the Kaggle data card: X1 current assets, X2 cost of goods sold, X3 depreciation & amortisation, X4 EBITDA, X5 inventory, X6 net income, X7 total receivables, X8 market value (market capitalisation), X9 net sales, X10 total assets, X11 total long-term debt, X12 EBIT, X13 gross profit. X14–X18 not confirmed (source page truncates after X13) | **Partially verified** (X1–X13) |
+| Industry field | `Division` (SIC division letter) and `MajorGroup` (2-digit SIC major group) present per firm-year | Verified (inspected raw CSV, 2026-09-14) |
+| Licence for reuse | GitHub repo: **CC-BY-4.0** (`LICENSE.md`). Kaggle mirror's own metadata claims **CC0 (public domain)** instead — the two distribution channels disagree. Treat as **CC-BY-4.0** (the more restrictive, and the source repo's own claim) and follow its citation request | Verified (2026-09-14), with a noted discrepancy |
+| Class balance | 78,682 firm-years: 73,462 `alive`, 5,220 `failed` (≈6.6% failure rate) | Verified (inspected raw CSV, 2026-09-14) |
 
 **Fit:** best readily available match for DR-1, DR-2, DR-4, DR-5.
 **Concerns:**
@@ -75,12 +77,15 @@ Sources: [SEC EDGAR APIs](https://www.sec.gov/search-filings/edgar-application-p
 | SEC APIs | `submissions`, `companyconcept`, `companyfacts`, `frames` on data.sec.gov; no authentication or API key | Verified |
 | Access rules | ≤ 10 requests/second per user; unclassified bots not permitted (declared User-Agent expected) | Verified |
 | Bulk data | Nightly `companyfacts.zip` and `submissions.zip` | Verified |
-| Per-fact filing metadata | Accession number, form, fiscal year/period and filing date per fact | **Unverified** (A-05) |
-| XBRL history | Structured financial data for US operating companies from roughly 2009–2011 onward (phased by filer size) | **Unverified** |
+| Per-fact filing metadata | Accession number, form, fiscal year/period and filing date per fact | Verified — `companyfacts` JSON carries `accn`, `form`, `fy`, `fp`, `filed`, `end` on every datapoint (checked 4 sample companies, 2026-09-14) |
+| XBRL history | Structured financial data for US operating companies from roughly 2009–2011 onward (phased by filer size) | Verified for the 4 sampled companies — earliest 10-K datapoints filed 2012 for FY2010/2011; consistent with the phase-in date |
 | Bankruptcy labels (BRD) | Over 1,000 large public-company bankruptcies filed since Oct 1979; cases table free to download; **no longer updated after the December 2022 update** | Verified |
 | BRD inclusion criteria | "Large" = ≥ $100M assets in 1980 dollars; "public" = filed a 10-K within ~3 years before bankruptcy | Verified (via library/search summary) |
-| BRD use conditions | Terms exist; restrictions on redistribution / public use not yet read | **Unverified** (A-21) |
-| BRD ↔ SEC linking | Whether BRD includes CIK or another reliable identifier | **Unverified** |
+| BRD use conditions | The User's Manual states: "We license the Cases table for both commercial and academic use." `conditions_of_use.php` additionally requires citing "Florida-UCLA-LoPucki Bankruptcy Research Database" as the data source, and asks academic users to post a 2–10 word project description. No redistribution clause found for the raw table itself — treat as: derive from it, don't republish it verbatim | Verified (read User's Manual + conditions_of_use page, 2026-09-14) — resolves A-21 |
+| BRD ↔ SEC linking | Whether BRD includes CIK or another reliable identifier | **Verified — yes.** The Cases table has a `CikBefore` field (and `CikEmerging`, `GvkeyBefore`, `Cusip6`/`Cusip9`). Of 1,218 cases, 992 have a non-null `CikBefore` |
+| BRD industry field | (new) `SICPrimary` / `SICDescription` per case | Verified — present |
+| Linkable events (rough count) | Of 1,218 BRD cases: 426 filed 2009+ with a `CikBefore`; 299 filed 2011+ with a `CikBefore` — both comfortably above the "100+" heuristic in §5 | Verified count from the downloaded Cases table (2026-09-14); **not yet** verified that all of them have ≥2 prior annual XBRL periods — see spot-check below |
+| ≥2 prior annual periods per case | Spot-checked 4 companies (21st Century Oncology, AAC Holdings, A123 Systems, A.M. Castle) against `companyfacts`: 3 of 4 had 14–23 pre-bankruptcy 10-K datapoints for `Assets` across multiple fiscal years; A123 Systems had only 1 pre-bankruptcy 10-K filing, but that filing itself reports 2 fiscal years (FY2010, FY2011) of comparatives | Verified for n=4 only — a full count across all ~300–426 linkable cases is Phase 3 implementation work, not yet done |
 
 **Fit:** strongest on DR-3 (training and inference use the *same* source → no
 definitional skew), DR-5 (true filing dates → point-in-time), DR-8 (SIC codes
@@ -123,9 +128,9 @@ unless access becomes available.
 | DR-3 Same features as inference | ⚠️ likely skew | ✅ | ❌ |
 | DR-4 Defined label | ✅ bankruptcy next year | ✅ bankruptcy (large firms) | ✅ multiple horizons |
 | DR-5 Temporal / point-in-time | ⚠️ fiscal year only | ✅ filing dates | ⚠️ limited |
-| DR-6 Enough events | ✅ likely | ⚠️ unknown | ✅ |
-| DR-7 Licence | ❓ | ❓ (BRD terms) · ✅ SEC public | ✅ CC BY 4.0 |
-| DR-8 Industry | ❓ | ✅ SIC | ❌ |
+| DR-6 Enough events | ✅ likely | ✅ 299–426 linkable (2026-09-14) | ✅ |
+| DR-7 Licence | ✅ CC-BY-4.0 (GitHub repo; Kaggle mirror disagrees, claims CC0) | ✅ BRD: commercial+academic use, attribution required · ✅ SEC public | ✅ CC BY 4.0 |
+| DR-8 Industry | ✅ `Division`/`MajorGroup` (SIC) | ✅ SIC | ❌ |
 | Effort | Low | High | Low |
 
 ## 5. Preliminary recommendation and Phase 3 decision gate
@@ -150,12 +155,77 @@ start of Phase 3**, not a choice made now on unverified details:
 5. Record the choice and its reasoning as a decision-log entry, and write the
    data dictionary for the chosen dataset.
 
+**Gate result (2026-09-14): both licences clear, and B clears the event-count
+heuristic (299–426 linkable cases against a 100+ bar) → Candidate B is the
+primary training source, with Candidate A kept as an external comparison.**
+Recorded as [D-013](decision_log.md). Full details in §7.
+
+## 6. Phase 3 decision gate — findings (2026-09-14)
+
+This section records what the gate steps in §5 actually found, run against
+live sources rather than the desk research above.
+
+**Step 1 — licence checks.**
+- **Candidate A:** the source GitHub repo (`sowide/bankruptcy_dataset`) is
+  CC-BY-4.0 (its `LICENSE.md`). Its Kaggle mirror's own page metadata claims
+  CC0 instead — the two disagree. Following the more conservative and
+  authoritative source, this project treats Candidate A as CC-BY-4.0 and
+  follows the GitHub README's citation request (Pellegrino et al. 2024;
+  Lombardo et al., *Future Internet* 2022) wherever it is used.
+- **BRD:** the User's Manual states the Cases table is licensed "for both
+  commercial and academic use," free of charge. `conditions_of_use.php`
+  requires citing "Florida-UCLA-LoPucki Bankruptcy Research Database" as the
+  source and (for academic users) posting a short project description. No
+  clause restricting non-commercial reuse or redistribution of derived
+  results was found. **Conclusion: clear to use, with attribution — resolves
+  A-21.** This project will derive from the Cases table (link to CIKs, use
+  dates/labels) rather than republish it verbatim.
+- **SEC EDGAR:** confirmed public-domain / open-reuse policy, 10 req/s limit,
+  descriptive `User-Agent` required — already reflected in
+  `SEC_USER_AGENT` (`.env.example`) and `sec_max_requests_per_second` (set to
+  8, below the limit) in `src/credit_risk_copilot/config.py`.
+
+**Step 2 — feasibility spike on Candidate B.** Downloaded the live BRD Cases
+table (`Florida-UCLA-LoPucki Bankruptcy Research Database 1-12-2023.zip`,
+1,218 cases, 217 fields).
+- 992 of 1,218 cases carry a non-null `CikBefore`.
+- **426 cases were filed 2009 or later with a CIK; 299 were filed 2011 or
+  later with a CIK** — both above the "100+" working heuristic from §5.
+- Spot-checked SEC's `companyfacts` API for 4 of those companies (21st
+  Century Oncology, AAC Holdings, A123 Systems, A.M. Castle & Co.): all
+  resolved with real XBRL data; per-fact metadata (`accn`, `form`, `fy`,
+  `fp`, `filed`, `end`) is present exactly as needed for the point-in-time
+  rule ([D-008](decision_log.md)); 3 of 4 had ample pre-bankruptcy annual
+  history (14–23 datapoints), 1 had only its single pre-bankruptcy 10-K
+  (which itself reports 2 fiscal years of comparatives).
+- **Not yet done:** confirming ≥2 prior annual periods across all
+  ~300–426 linkable cases (only 4 were spot-checked), and building the full
+  negative-class population of non-bankrupt company-years. Both are Phase 3
+  implementation work, not part of this gate.
+
+**Step 3 — inspect Candidate A.** Downloaded the live CSV
+(`american_bankruptcy_dataset.csv`, 78,682 rows × 23 columns).
+- Confirmed columns: `company_name` (anonymised, e.g. `C_1`), `fyear`,
+  `status_label` (`alive`/`failed`), `X1`–`X18`, `Division`, `MajorGroup`.
+- Class balance: 73,462 `alive` vs 5,220 `failed` (≈6.6% failure rate).
+- Feature definitions X1–X13 confirmed from the Kaggle data card (see §3.2
+  table); X14–X18 remain unconfirmed (the source page truncates) — mapping
+  the full feature list to XBRL/ratio-engine concepts is Phase 3/6 work once
+  X14–X18 are pinned down (e.g. from the cited paper, if it becomes
+  accessible, or by correlating against Candidate B's own computed ratios).
+
+**Step 4 — decision.** B clears DR-6 on the stated heuristic and is strongest
+on DR-3/DR-5/DR-8 per §4 → **Candidate B (self-built SEC + BRD) is primary.**
+Candidate A is kept as an external comparison/benchmark (not for production
+training), consistent with §3.4's treatment of Candidate C. See
+[D-013](decision_log.md) for the formal record.
+
 **Label semantics, whichever option wins:** the model will estimate *the
 likelihood of a bankruptcy filing within roughly the next fiscal year, for
 companies resembling the training population*. It will not estimate an
 early-warning "deterioration" event, and the UI must say so ([D-010](decision_log.md)).
 
-## 6. What this means for the ML/NLP design
+## 7. What this means for the ML/NLP design
 
 - The ML model uses **financial features only**. No public dataset pairs
   bankruptcy labels with NLP risk signals from the same filings, so NLP signals
