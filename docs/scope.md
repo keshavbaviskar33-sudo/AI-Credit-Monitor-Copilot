@@ -47,7 +47,7 @@ defined and tested in Phase 5/7.
 | Combination | Unified assessment representation; contradiction rules | 11 |
 | Synthesis | One grounded LLM call with structured output and code-based grounding validation | 12 |
 | Review | Approve / modify / reject; immutable drafts; review history | 13 |
-| Persistence | SQLite, append-only assessment and review history | 13/15 (proposed earlier — [D-009](decision_log.md)) |
+| Persistence | SQLite, append-only assessment and review history | 13/15 (moved earlier — [D-009](decision_log.md)) |
 | UI | Watchlist + company view organised around the five analyst questions | 14 |
 | Demo | Historical replay ("as of" date) on a small watchlist | 11–14 (should-have) |
 

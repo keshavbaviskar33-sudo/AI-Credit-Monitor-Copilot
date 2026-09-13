@@ -11,14 +11,14 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-001](#d-001-product-framing-monitoring-copilot) | Product framing: monitoring copilot | Accepted | 2026-09-13 |
 | [D-002](#d-002-initial-universe-us-sec-registrants) | Initial universe: US SEC registrants | Accepted | 2026-09-13 |
 | [D-003](#d-003-analyst-owns-every-final-judgement) | Analyst owns every final judgement | Accepted | 2026-09-13 |
-| [D-004](#d-004-ml-model-uses-financial-features-only) | ML model uses financial features only | Proposed | 2026-09-13 |
-| [D-005](#d-005-xbrl-as-source-of-record-pdf-extraction-evaluated-against-it) | XBRL as source of record; PDF extraction evaluated against it | Proposed | 2026-09-13 |
-| [D-006](#d-006-exclude-financial-sector-companies-from-mvp) | Exclude financial-sector companies from MVP | Proposed | 2026-09-13 |
-| [D-007](#d-007-annual-periods-before-quarterly) | Annual periods before quarterly | Proposed | 2026-09-13 |
-| [D-008](#d-008-point-in-time-as-filed-data-rule) | Point-in-time (as-filed) data rule | Proposed | 2026-09-13 |
-| [D-009](#d-009-roadmap-amendments) | Roadmap amendments | Proposed | 2026-09-13 |
-| [D-010](#d-010-ml-output-is-not-called-a-probability-of-default) | ML output is not called a "probability of default" | Proposed | 2026-09-13 |
-| [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) | Training data chosen through a Phase 3 decision gate | Proposed | 2026-09-13 |
+| [D-004](#d-004-ml-model-uses-financial-features-only) | ML model uses financial features only | Accepted | 2026-09-13 |
+| [D-005](#d-005-xbrl-as-source-of-record-pdf-extraction-evaluated-against-it) | XBRL as source of record; PDF extraction evaluated against it | Accepted | 2026-09-13 |
+| [D-006](#d-006-exclude-financial-sector-companies-from-mvp) | Exclude financial-sector companies from MVP | Accepted | 2026-09-13 |
+| [D-007](#d-007-annual-periods-before-quarterly) | Annual periods before quarterly | Accepted | 2026-09-13 |
+| [D-008](#d-008-point-in-time-as-filed-data-rule) | Point-in-time (as-filed) data rule | Accepted | 2026-09-13 |
+| [D-009](#d-009-roadmap-amendments) | Roadmap amendments | Accepted | 2026-09-13 |
+| [D-010](#d-010-ml-output-is-not-called-a-probability-of-default) | ML output is not called a "probability of default" | Accepted | 2026-09-13 |
+| [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) | Training data chosen through a Phase 3 decision gate | Accepted | 2026-09-13 |
 
 ---
 
@@ -52,7 +52,7 @@ a reversed decision gets a new entry that supersedes the old one.
 **Consequences.** Separate data entities for AI assessment and analyst review; tests enforce that no code path sets final status automatically (SC-05, SC-06).
 
 ## D-004 ML model uses financial features only
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Context.** The brief's target architecture diagram routes NLP risk signals into the ML model. A supervised model can only use inputs present in its training data; no available labelled dataset contains NLP signals extracted from the same filings.
 
@@ -63,7 +63,7 @@ a reversed decision gets a new entry that supersedes the old one.
 **Consequences.** Simpler, valid model; qualitative evidence remains visible rather than absorbed into an opaque score. A text-aware model remains a possible later extension.
 
 ## D-005 XBRL as source of record; PDF extraction evaluated against it
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Context.** The brief plans PDF extraction → parsing as the route to financial data. For US SEC filers, filings are HTML with machine-readable XBRL financial data; parsing a PDF to recover numbers that already exist in structured form is less reliable. PDF extraction still matters for documents without XBRL (private borrowers, lender presentations, audited statements).
 
@@ -75,21 +75,21 @@ a reversed decision gets a new entry that supersedes the old one.
 **Disadvantages.** Two input paths to maintain; XBRL concept mapping is its own problem (R-11).
 
 ## D-006 Exclude financial-sector companies from MVP
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Decision.** Exclude banks, insurers, broker-dealers, REITs, investment funds and shell companies (by SIC code) in MVP.
 
 **Reason.** Standard corporate ratios (current ratio, debt/equity, interest coverage) are misleading or undefined for these business models, and they need different analysis frameworks.
 
 ## D-007 Annual periods before quarterly
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Decision.** MVP assesses annual (10-K) fiscal years. Quarterly (10-Q) comes later.
 
 **Reason.** 10-Q cash-flow statements are reported year-to-date, and fourth quarters must be derived from annual minus nine-month figures — real complexity that should follow a working annual pipeline. Real monitoring is often quarterly; this is a stated MVP limitation (A-03).
 
 ## D-008 Point-in-time (as-filed) data rule
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Decision.** Any assessment, training example or historical replay "as of" date *T* uses only facts **filed on or before T**, using the values as originally filed for that period unless the analyst explicitly chooses restated values.
 
@@ -98,7 +98,7 @@ a reversed decision gets a new entry that supersedes the old one.
 **Consequences.** Facts must be stored with filing date and accession number; dedicated tests (SC-07).
 
 ## D-009 Roadmap amendments
-**Status:** Proposed — see [roadmap.md](roadmap.md)
+**Status:** Accepted (delegated by project owner, 2026-09-13) — see [roadmap.md](roadmap.md)
 
 1. Data feasibility desk research added to Phase 1 (done), so the dataset constrains the schema before Phase 5.
 2. Evaluation is built **incrementally in each phase**; Phase 17 consolidates rather than starts evaluation.
@@ -106,13 +106,13 @@ a reversed decision gets a new entry that supersedes the old one.
 4. Synthesis (Phase 12) must cite evidence IDs, validated by code (SC-04).
 
 ## D-010 ML output is not called a "probability of default"
-**Status:** Proposed
+**Status:** Accepted (delegated to engineering judgement by project owner, 2026-09-13)
 
 **Decision.** Present the ML output as an *estimated likelihood of the modelled event (e.g. bankruptcy filing) within the modelled horizon, for companies resembling the training population*, with its applicability warnings. Avoid "PD" and avoid unqualified labels like "74% risk".
 
 **Reason.** Public labels are bankruptcy filings, not defaults; the training base rate differs from any real portfolio (A-14); "PD" has a specific regulatory meaning.
 
 ## D-011 Training data chosen through a Phase 3 decision gate
-**Status:** Proposed — details in [data_feasibility.md §5](data_feasibility.md)
+**Status:** Accepted (delegated by project owner, 2026-09-13) — details in [data_feasibility.md §5](data_feasibility.md)
 
 **Decision.** Do not select the training dataset on unverified details. Phase 3 begins with licence checks, a feasibility spike on a self-built SEC + bankruptcy-records dataset, and an inspection of the public US bankruptcy dataset, followed by a recorded decision.

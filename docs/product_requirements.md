@@ -94,7 +94,7 @@ investment signals.
 |---|---|---|---|
 | Company identifier (ticker or CIK) added to a watchlist | Analyst | ✅ | Resolved to SEC CIK |
 | Company metadata (name, SIC industry code, fiscal year end) | SEC EDGAR submissions API | ✅ | Needed for scope filtering and future industry benchmarks |
-| Structured financial facts (as filed) | SEC XBRL `companyfacts` API | ✅ | Proposed source of record for public-filer numbers — [D-005](decision_log.md) |
+| Structured financial facts (as filed) | SEC XBRL `companyfacts` API | ✅ | Source of record for public-filer numbers — [D-005](decision_log.md) |
 | Annual report filing (10-K) | SEC EDGAR | ✅ | Primary document is HTML / inline XBRL |
 | Narrative sections: MD&A (Item 7), Risk Factors (Item 1A) | 10-K text | ✅ | Input to NLP risk signals |
 | Financial statement PDFs uploaded by the analyst | Analyst upload | ✅ | Text-based PDFs first; accuracy measured against XBRL where both exist |
@@ -252,7 +252,7 @@ Full register: [risks.md](risks.md). The most consequential for product design:
 | # | Question | Needed by |
 |---|---|---|
 | Q1 | Which training dataset and target definition? (candidates and decision gate in [data_feasibility.md](data_feasibility.md)) | Phase 3 |
-| Q2 | Approve proposed decisions D-004 – D-011? | Before Phase 2 |
+| ~~Q2~~ | ~~Approve proposed decisions D-004 – D-011?~~ Resolved 2026-09-13: all accepted | — |
 | Q3 | LLM provider and budget | Phase 12 |
 | Q4 | UI framework (Streamlit vs. API + web frontend) | Phase 2 (initial), Phase 14 (final) |
 | Q5 | Which industries to support after MVP, and what benchmark data exists for industry-aware thresholds | Phase 7+ |

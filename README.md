@@ -13,7 +13,7 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 1 of 20 — Problem definition & product design (complete, pending review).**
+**Phase 1 of 20 — Problem definition & product design (complete).**
 No application code yet.
 
 ## Documentation
