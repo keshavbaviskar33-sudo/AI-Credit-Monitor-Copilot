@@ -279,9 +279,7 @@ class HtmlDocumentExtractor:
             blocks=assign_sections(tuple(acc.blocks), sections),
             tables=tables,
             sections=sections,
-            errors=tuple(acc.errors)
-            + section_errors
-            + check_expected_content(tables, sections),
+            errors=tuple(acc.errors) + section_errors + check_expected_content(tables, sections),
         )
 
 

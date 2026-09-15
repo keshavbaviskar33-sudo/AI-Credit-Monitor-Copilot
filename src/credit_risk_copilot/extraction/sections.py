@@ -250,9 +250,7 @@ def check_expected_content(
         if section_id not in located:
             continue  # already reported as section_not_found
         present = [
-            t
-            for t in tables
-            if t.location.section_id == section_id and t.looks_like_financial_data
+            t for t in tables if t.location.section_id == section_id and t.looks_like_financial_data
         ]
         if present:
             continue
