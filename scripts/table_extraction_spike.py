@@ -33,6 +33,7 @@ import pandas as pd
 import pdfplumber
 import pymupdf
 
+from credit_risk_copilot.extraction import DocumentSource, HtmlDocumentExtractor
 from credit_risk_copilot.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -129,7 +130,50 @@ def _cells_pymupdf(path: Path) -> tuple[set[str], int, float]:
     return cells, tables, time.monotonic() - started
 
 
-EXTRACTORS = {"pdfplumber": _cells_pdfplumber, "pymupdf": _cells_pymupdf}
+def _cells_html(path: Path) -> tuple[set[str], int, float]:
+    """The same measurement over the filing's HTML, as the reference point.
+
+    HTML is the primary document path (D-005/D-014), so its recall is what the
+    PDF numbers should be read against. Without this row it is impossible to
+    tell a hard filing from a weak extractor.
+    """
+    started = time.monotonic()
+    document = HtmlDocumentExtractor().extract(
+        path.read_bytes(), DocumentSource(uri=path.name, media_type="text/html")
+    )
+    cells = {cell for table in document.tables for row in table.rows for cell in row if cell}
+    return cells, len(document.tables), time.monotonic() - started
+
+
+def _text_pdfplumber(path: Path) -> tuple[set[str], int, float]:
+    """Every whitespace-separated token of the PDF's *text*, not its tables.
+
+    Table detection can miss a value that text extraction sees: on Peabody's
+    2015 10-K every sampled reference value is present in the extracted text
+    while only 12% land in an extracted table cell. Measuring both separates
+    "the render lost it" from "table detection lost it" -- and says whether a
+    text-based fallback would be worth building in Phase 5.
+    """
+    started = time.monotonic()
+    tokens: set[str] = set()
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            for token in (page.extract_text() or "").split():
+                tokens.add(token.strip(" $%*†‡"))
+            page.flush_cache()
+            page.get_textmap.cache_clear()
+    return tokens, 0, time.monotonic() - started
+
+
+#: Keyed by what each row measures. `html` is the primary path; the two PDF
+#: table rows are the actual R-19 comparison; `pdf-text` bounds what any PDF
+#: extractor could reach.
+EXTRACTORS = {
+    "html": _cells_html,
+    "pdfplumber": _cells_pdfplumber,
+    "pymupdf": _cells_pymupdf,
+    "pdf-text": _text_pdfplumber,
+}
 
 
 def main() -> None:
@@ -155,8 +199,13 @@ def main() -> None:
         ]
         targets = [(concept, strings) for concept, strings in targets if strings]
 
+        html_path = Path(entry["html_path"])
         for library, extract in EXTRACTORS.items():
-            cells, tables, seconds = extract(pdf_path)
+            source_path = html_path if library == "html" else pdf_path
+            if not source_path.exists():
+                logger.warning("%s: %s missing; skipping", entry["company"], source_path)
+                continue
+            cells, tables, seconds = extract(source_path)
             hits = sum(1 for _, strings in targets if strings & cells)
             results.append(
                 {

@@ -162,6 +162,56 @@ present in some extracted cell", where QM-01 asks "was it extracted as the
 correct labelled field". Labelling needs Phase 5's canonical schema, so read
 these figures as an upper bound on both paths.
 
+### The HTML path recovers 85% of reference values; the PDF path does not
+
+Measured across all 342 reference values. This is the number that matters most
+in Phase 4, because it is the first evidence that the primary document path
+works at all:
+
+| Filing | Cohort | HTML recall | |
+|---|---|---:|---|
+| Apple FY2025 | healthy | 22/22 | **100%** |
+| Tesla FY2025 | healthy | 24/24 | **100%** |
+| Walmart FY2026 | healthy | 22/22 | **100%** |
+| Pfizer FY2025 | healthy | 18/18 | **100%** |
+| Coca-Cola FY2025 | healthy | 20/20 | **100%** |
+| UPS FY2025 | healthy | 17/17 | **100%** |
+| Expand Energy 2019 | distressed | 18/19 | 95% |
+| Frontier 2019 | distressed | 29/35 | 83% |
+| iHeartMedia 2016 | distressed | 36/46 | 78% |
+| SandRidge 2015 | distressed | 31/41 | 76% |
+| Pyxus 2019 | distressed | 22/30 | 73% |
+| Peabody 2015 | distressed | 32/48 | 67% |
+| **Total** | | **291/342** | **85.1%** |
+
+**Every 2025–26 filing scores 100%.** The shortfall is entirely in the
+2015–2019 cohort, whose HTML is older and messier — a reminder that a pipeline
+demoed on current filings will look better than it is on historical replay,
+which is exactly what this product does (FR-05).
+
+The HTML path also costs **1–2 seconds per filing** against 150–800 seconds for
+the PDF path. Taken with the recall gap below, this is strong support for
+[D-005](decision_log.md) and [D-014](decision_log.md): HTML is the primary
+path, and PDF is a fallback for documents that have no alternative.
+
+### PDF table extraction misses values that PDF text extraction finds
+
+Peabody's PDF scored **6/48 (12%)** for pdfplumber — far below its 32/48 on
+HTML. Investigating rather than publishing it revealed that the values are not
+lost at all:
+
+| Where Peabody's sampled values appear | Present |
+|---|---|
+| HTML table cells | ✅ all 6 sampled |
+| PDF **text** (`extract_text`) | ✅ all 6 sampled |
+| PDF **table cells** (`extract_tables`) | ❌ 12% overall |
+
+The render preserves the numbers; **table *detection* is what loses them** on
+complex nested layouts. So the PDF figures below measure "reference value
+landed in an extracted table cell" — not "the extractor could not reach this
+value". A text-based line parser would recover much of the gap, which is a
+concrete option for Phase 5 if the upload path needs to do better.
+
 <!-- RESULTS -->
 
 ### The finding that shaped the design
