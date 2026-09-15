@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -45,9 +46,20 @@ REFERENCE_VALUES = GOLDEN_DIR / "reference_values.csv"
 #: reflects table extraction rather than unit detection.
 SCALES = (1, 1_000, 1_000_000)
 
+#: Decimal places a filing may print at a given scale. Whole units are the
+#: common case, but "in millions" statements routinely carry one decimal --
+#: Peabody's 2015 10-K prints total assets as "14,133.4". Omitting these cost
+#: that filing 46 of its 48 reference values on the first run: a defect in this
+#: measurement, not in the extractor, and the reason it is spelled out here.
+DECIMAL_PLACES = (0, 1, 2)
+
 
 def _candidate_strings(value: float) -> set[str]:
     """How a filing might render `value` in a table cell.
+
+    `Decimal` rather than float arithmetic, so scaling a figure like
+    14,133,400,000 down to millions compares exactly instead of landing on
+    14133.399999999998.
 
     Deliberately generous, in the same direction as everything else here: a
     negative value also matches its bare positive form, because statements
@@ -56,18 +68,23 @@ def _candidate_strings(value: float) -> set[str]:
     more reason these figures are an upper bound rather than an estimate.
     """
     out: set[str] = set()
-    negative = value < 0
+    amount = Decimal(str(value))
+    negative = amount < 0
+    magnitude = abs(amount)
+
     for scale in SCALES:
-        scaled = abs(value) / scale
-        if scaled < 1 and scaled != 0:
+        scaled = magnitude / Decimal(scale)
+        if scaled != 0 and scaled < 1:
             continue
-        if scaled != int(scaled):
-            continue
-        rendered = f"{int(scaled):,}"
-        out.add(rendered)
-        if negative:
-            out.add(f"({rendered})")
-            out.add(f"-{rendered}")
+        for places in DECIMAL_PLACES:
+            quantised = scaled.quantize(Decimal(1).scaleb(-places))
+            if quantised != scaled:
+                continue  # printing at this precision would lose digits
+            rendered = f"{quantised:,.{places}f}"
+            out.add(rendered)
+            if negative:
+                out.add(f"({rendered})")
+                out.add(f"-{rendered}")
     return out
 
 
