@@ -21,6 +21,8 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-011](#d-011-training-data-chosen-through-a-phase-3-decision-gate) | Training data chosen through a Phase 3 decision gate | Accepted | 2026-09-13 |
 | [D-012](#d-012-initial-ui-framework-streamlit) | Initial UI framework: Streamlit | Accepted | 2026-09-14 |
 | [D-013](#d-013-training-data-candidate-b-self-built-sec--brd-as-primary) | Training data: Candidate B (self-built SEC + BRD) as primary | Accepted | 2026-09-14 |
+| [D-014](#d-014-html-is-the-primary-document-path-golden-set-pdfs-are-generated) | HTML is the primary document path; golden-set PDFs are generated | Accepted | 2026-09-15 |
+| [D-015](#d-015-pdf-library-pdfplumber-for-text-and-tables) | PDF library: pdfplumber for text and tables | Accepted | 2026-09-15 |
 
 ---
 
@@ -150,3 +152,35 @@ a reversed decision gets a new entry that supersedes the old one.
 - 178 usable positive events (not the earlier 299–426 estimate) is a real statistical-power constraint: an out-of-time train/validation/test split will leave only a few dozen events in some splits, so Phase 8/9 should plan evaluation (e.g. confidence intervals, wider validation windows) accordingly rather than assuming Candidate A's larger-sample statistics carry over.
 - BRD's licence requires citing "Florida-UCLA-LoPucki Bankruptcy Research Database" as the data source wherever it is used; Candidate A's use follows its GitHub README's citation request.
 - BRD stopped updating after its December 2022 release, so no bankruptcies after that date are labelled — a stated limitation for any "recent" demo companies (already noted as a scope constraint, [scope.md §6](scope.md)).
+
+## D-014 HTML is the primary document path; golden-set PDFs are generated
+**Status:** Accepted (project owner, 2026-09-15) — resolves how [A-07](assumptions.md) is satisfied; design in [extraction.md](extraction.md), corpus in [golden_set.md](golden_set.md).
+
+**Context.** The roadmap gives Phase 4 a golden evaluation set of 10-K statements with XBRL reference values, and QM-01 is worded as "field-level extraction accuracy … (PDF vs. XBRL reference)". But **SEC publishes 10-Ks as HTML / inline XBRL and never as PDF.** The original brief assumed a PDF-first pipeline; for SEC filers that input does not exist. Meanwhile FR-04 does require a PDF path, because analysts upload PDFs. [A-07](assumptions.md) anticipated this and allowed golden-set PDFs to be "obtained **or generated**".
+
+Three ways to get a PDF corpus were considered:
+- **Generate PDFs by rendering the filing HTML.** Licence-clear, reproducible by anyone who clones the repo, and both paths get scored against identical ground truth.
+- **HTML only, defer PDF to Phase 5.** Smaller phase, but leaves FR-04 and the R-19 library spike unaddressed where the roadmap puts them.
+- **Collect real investor-relations PDFs by hand.** Most realistic input, but manual, not reproducible for anyone else, and the terms for redistributing them are unclear.
+
+**Decision.** **HTML is the primary document path for SEC filings**, and the golden set's PDFs are **generated from that same HTML** with `pymupdf.Story` (`extraction/render.py`). Both extractors are built behind one `DocumentExtractor` interface and measured against the same XBRL reference values.
+
+**Consequences.**
+- QM-01 will be reported **per path**, and the PDF figure is an **upper bound**: a rendered PDF has clean text, no scan artefacts and consistent fonts, which a real analyst upload often will not. This is stated wherever the number appears rather than left implicit ([golden_set.md](golden_set.md)).
+- Rendering forces a non-cosmetic choice: `pymupdf.Story` draws tables with no ruling lines, and measured during this phase, a borderless render defeats table detection in *both* candidate libraries. `render.TABLE_CSS` adds borders to restore it. Without that, the golden set would have measured the renderer instead of the extractor. The side effect is that layout tables also gain borders, so the PDF path reports more "tables" than the HTML path — a counting artefact, not extra data.
+- Building the corpus is slow (roughly ten minutes per filing, dominated by rendering) but runs once and is cached; `data/` stays gitignored and rebuildable, as in Phase 3.
+- If real-world PDF accuracy later matters more than this arrangement can show, the honest fix is a small hand-collected PDF set at that point — not a re-reading of the generated numbers.
+
+## D-015 PDF library: pdfplumber for text and tables
+**Status:** Accepted (delegated to engineering judgement, 2026-09-15) — closes the [R-19](risks.md) spike; measurements in [golden_set.md](golden_set.md).
+
+**Context.** [R-19](risks.md) ("library capabilities assumed but not verified, e.g. PDF table extraction quality") explicitly asks Phase 4 to **spike and measure before committing to a library**. `pyproject.toml` declared both `pdfplumber` and `pymupdf` without choosing. `scripts/table_extraction_spike.py` measures them over the golden set.
+
+**The metric is reference-value recall, not table count.** Counting tables rewards a library for finding page-layout scaffolding. What matters is whether the figures XBRL reports for a filing can be found among the cells the library extracted, allowing for the scales (units/thousands/millions) and conventions (comma grouping, parentheses for negatives) a filing may use. That is a deliberate *preview* of QM-01 and not QM-01 itself: it asks "is this number present in some extracted cell", where QM-01 asks "was it extracted as the correct labelled field". Labelling needs Phase 5's canonical schema.
+
+**Decision.** **`pdfplumber` is the PDF extractor** (`extraction/pdf_extractor.py`). `pymupdf` is kept — it is what renders HTML to PDF for the golden set (D-014) — but is not used for extraction.
+
+**Consequences.**
+- One library owns document extraction, and the choice is recorded with a measurement behind it rather than a preference.
+- Both libraries share the same real weakness: borderless tables. pdfplumber's line strategy finds nothing in them, and its text strategy returns shredded cells. Financial statements in *real* uploaded PDFs are often borderless, so this is a live limitation for FR-04 uploads, not a solved problem — recorded in [risks.md](risks.md) under R-09/R-19 and revisited if upload accuracy proves insufficient.
+- `extraction/base.py`'s `DocumentExtractor` protocol keeps the library swappable, so reversing this does not reach beyond one module.

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Phase 3 complete — decision accepted; Phase 4 next |
-| **Date** | 2026-09-14 |
+| **Status** | Phase 4 complete — document extraction and golden set delivered; Phase 5 next |
+| **Date** | 2026-09-15 |
 
 Phases are completed one at a time. Each phase ends with tests/checks, a
 status report and an explicit go-ahead before the next phase starts.
@@ -15,7 +15,7 @@ status report and an explicit go-ahead before the next phase starts.
 | 1 | Problem definition & product design | ✅ Complete | Added data feasibility research and decision log |
 | 2 | Engineering environment & repository | ✅ Complete | Confirmed Python 3.12 library compatibility ([engineering_setup.md](engineering_setup.md)); initial UI framework accepted ([D-012](decision_log.md)) |
 | 3 | Data acquisition & understanding | ✅ Complete | Dataset decision gate resolved: Candidate B primary, audited at full scale — 178 usable positive events, ~7,973-company candidate negative universe ([D-013](decision_log.md), [data_dictionary.md](data_dictionary.md)). Point-in-time feature extraction and the actual negative-class sample are Phase 5/8 work |
-| 4 | Document extraction | Not started | Builds a golden evaluation set of 10-K statements with XBRL reference values |
+| 4 | Document extraction | ✅ Complete | Golden evaluation set built with XBRL reference values ([golden_set.md](golden_set.md)). HTML is the primary document path and golden-set PDFs are generated, since SEC publishes no PDFs ([D-014](decision_log.md)); PDF library chosen by measurement, closing R-19 ([D-015](decision_log.md)). Also delivered: item-section detection for Phase 10 and upload validation for FR-04 ([extraction.md](extraction.md)) |
 | 5 | Financial statement parsing | Not started | Introduces typed domain models with provenance; XBRL ingestion with point-in-time rule (D-005, D-008) |
 | 6 | Deterministic ratio engine | Not started | Ratio definitions shared with ML features |
 | 7 | Financial health analysis | Not started | Thresholds in configuration; industry-aware hooks |

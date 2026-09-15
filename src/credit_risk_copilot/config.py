@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     sec_request_timeout_seconds: float = 10.0
     sec_max_requests_per_second: float = 8.0
 
+    # Phase 4: ceiling on analyst-uploaded documents (FR-04). 25 MB comfortably
+    # holds a full annual report PDF while bounding what a parser is handed.
+    max_upload_bytes: int = 25 * 1024 * 1024
+
     # Phase 13/15: append-only SQLite persistence. Not yet used.
     database_url: str = "sqlite:///./data/credit_risk_copilot.db"
 

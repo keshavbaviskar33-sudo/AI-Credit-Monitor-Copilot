@@ -13,20 +13,26 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 4 of 20 — Document extraction (next).**
-Phase 3 (data acquisition & understanding) is complete: the training dataset
-is a self-built SEC XBRL + bankruptcy-records dataset ([D-013](docs/decision_log.md)),
-audited at full scale — 178 usable positive events, ~7,973-company candidate
-negative universe (see [data_dictionary.md](docs/data_dictionary.md)). No
-product code yet.
+**Phase 4 of 20 — Document extraction (complete).**
+Phase 3 is complete: the training dataset is a self-built SEC XBRL +
+bankruptcy-records dataset ([D-013](docs/decision_log.md)), audited at full
+scale — 178 usable positive events, ~7,973-company candidate negative universe
+([data_dictionary.md](docs/data_dictionary.md)).
+
+Phase 4 adds the first pipeline layer: 10-K HTML and PDF extraction into
+located text, tables and item sections ([extraction.md](docs/extraction.md)),
+analyst upload validation (FR-04), and a golden evaluation set of filings with
+XBRL reference values ([golden_set.md](docs/golden_set.md)) so extraction
+accuracy (QM-01) becomes measurable. Turning extracted tables into canonical
+line items — and the QM-01 number itself — is Phase 5.
 
 ## Environment setup
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```
-uv sync --extra dev       # base dependencies + tests/lint/types
-cp .env.example .env      # then fill in SEC_USER_AGENT at minimum
+uv sync --extra dev --extra pdf   # dependencies + tests/lint/types + extraction
+cp .env.example .env              # then fill in SEC_USER_AGENT at minimum
 uv run pytest
 ```
 
@@ -43,6 +49,9 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Assumptions](docs/assumptions.md) | What the design depends on and how each assumption will be checked |
 | [Risks](docs/risks.md) | Risk register with mitigations |
 | [Data feasibility](docs/data_feasibility.md) | Candidate training data and the Phase 3 decision gate |
+| [Data dictionary](docs/data_dictionary.md) | Training dataset: unit of observation, label, features, provenance |
+| [Document extraction](docs/extraction.md) | Extraction design: provenance, the two paths, section detection, limits |
+| [Golden set](docs/golden_set.md) | Evaluation corpus, XBRL reference values, and the R-19 library measurement |
 | [Data dictionary](docs/data_dictionary.md) | Chosen training dataset: unit of observation, target, features, provenance |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |

@@ -164,13 +164,9 @@ def main() -> None:
     linkage_path = PROCESSED_DIR / "brd_sec_linkage_audit.csv"
     linkage.to_csv(linkage_path, index=False)
 
-    usable = linkage[
-        (linkage["status"] == "ok") & (linkage["pre_bankruptcy_annual_periods"] >= 2)
-    ]
+    usable = linkage[(linkage["status"] == "ok") & (linkage["pre_bankruptcy_annual_periods"] >= 2)]
     logger.info("Total BRD cases with a CIK: %d", len(linkage))
-    logger.info(
-        "Usable cases (>=2 pre-bankruptcy annual XBRL periods): %d", len(usable)
-    )
+    logger.info("Usable cases (>=2 pre-bankruptcy annual XBRL periods): %d", len(usable))
     logger.info("Full linkage audit written to %s", linkage_path)
 
     brd_ciks = set(cases["CikBefore"].dropna().astype(int))

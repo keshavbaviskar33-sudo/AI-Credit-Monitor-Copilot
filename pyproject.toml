@@ -66,7 +66,13 @@ mypy_path = "src"
 packages = ["credit_risk_copilot"]
 strict = true
 warn_unused_ignores = true
-# Third-party libraries used in later phases without bundled type stubs.
+# Third-party libraries without bundled type stubs.
 [[tool.mypy.overrides]]
-module = ["shap.*", "pdfplumber.*", "pymupdf.*", "fitz.*"]
+module = ["shap.*", "pdfplumber.*", "pymupdf.*", "fitz.*", "lxml.*"]
 ignore_missing_imports = true
+
+# pymupdf ships no annotations, so every Story/DocumentWriter call reads as
+# untyped. This module is the only place that touches that API.
+[[tool.mypy.overrides]]
+module = ["credit_risk_copilot.extraction.render"]
+disallow_untyped_calls = false

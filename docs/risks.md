@@ -20,7 +20,7 @@
 | R-06 | **Automation bias** — analysts approve fluent AI drafts without scrutiny | H | M | Draft labelling; contradictions next to review controls; no default action; mandatory comments on modify/reject | 13, 14 |
 | R-07 | **Ungrounded LLM output** — invented numbers, sources or causes | H | M | Evidence IDs; structured output; code-based validation of citations and numbers (SC-04); fall back to `insufficient_data` | 12, 17 |
 | R-08 | **Prompt injection via documents** — filing or uploaded text containing instructions to the LLM | M | L–M | Treat document text as data; delimit evidence; no tools/actions available to the LLM; output schema validation | 10, 12 |
-| R-09 | **Extraction errors propagate silently** — wrong unit (thousands vs. millions), sign or column | H | M | Unit detection with provenance; accounting sanity checks; reconciliation against XBRL; accuracy measured on golden set | 4, 5 |
+| R-09 | **Extraction errors propagate silently** — wrong unit (thousands vs. millions), sign or column | H | M | Phase 4 built the "never silent" half: every block/table/section carries a resolvable location, and anything not extracted becomes an explicit `ExtractionError` (a page with no text, a section that cannot be located) rather than an omission ([extraction.md](extraction.md)); golden set with XBRL reference values assembled ([golden_set.md](golden_set.md)). Still Phase 5: unit detection, accounting sanity checks, and the QM-01 accuracy number itself | 4, 5 |
 | R-10 | **Universal thresholds misapplied across industries** | M | H | Thresholds in configuration; industry exclusions in MVP; flags framed relative to the company's own trend first | 7 |
 
 ## Other risks
@@ -35,5 +35,5 @@
 | R-16 | Sensitive uploaded documents or analyst comments committed or leaked | H | L | `.gitignore` for data/uploads; local storage; secrets via environment variables | 2, 15 |
 | R-17 | Outputs mistaken for a credit decision or rating | H | L–M | Persistent disclaimer; "AI draft" labelling; analyst-only watch status | 12–14 |
 | R-18 | Scope creep across 20 phases for a single developer | M | H | Phase gates; scope changes via decision log; MVP non-goals | All |
-| R-19 | Library capabilities assumed but not verified (e.g. PDF table extraction quality) | M | M | Spike and measure before committing to a library | 2, 4 |
+| R-19 | Library capabilities assumed but not verified (e.g. PDF table extraction quality) | M | M | ✅ **Spike done (Phase 4)** — `scripts/table_extraction_spike.py` measured pdfplumber vs pymupdf on the golden set by reference-value recall, not table count; pdfplumber chosen ([D-015](decision_log.md), [golden_set.md](golden_set.md)). Residual: **both** libraries fail on borderless tables, which real uploaded statements often use | 2, 4 |
 | R-20 | No real analyst feedback, so UX assumptions stay unvalidated | M | H | Scripted walkthroughs; state limitation clearly | 14, 18 |

@@ -55,13 +55,29 @@ need a library not listed here.
 ## 3. Common commands
 
 ```
-uv sync --extra dev              # base + dev tools
+uv sync --extra dev --extra pdf  # base + dev tools + extraction (Phase 4 onward)
 uv sync --all-extras             # everything, for local development
 uv run pytest                    # tests + coverage
 uv run ruff check .              # lint
 uv run ruff format .             # format
 uv run mypy src                  # type check
 ```
+
+The `pdf` extra (`lxml`, `pdfplumber`, `pymupdf`) is required from Phase 4: the
+extraction package and its tests import it. `uv sync --extra dev` alone will
+leave those tests failing on import.
+
+Data-building scripts, both cache-first and safe to rerun:
+
+```
+uv run python scripts/phase3_data_audit.py        # BRD <-> SEC linkage audit (Phase 3)
+uv run python scripts/build_golden_set.py         # golden evaluation set (Phase 4)
+uv run python scripts/table_extraction_spike.py   # R-19 library measurement (Phase 4)
+```
+
+> `build_golden_set.py` takes roughly ten minutes per filing on a first run,
+> dominated by HTML→PDF rendering. Everything it downloads and renders is
+> cached under `data/`, so reruns are fast and cost no SEC requests.
 
 ## 4. Line endings
 
