@@ -144,6 +144,21 @@ population on leverage ratios.
 5. **Twelve filings is small.** It is enough to catch systematic extraction
    failures, not to produce a tight accuracy estimate. Report intervals, not
    just point estimates, when QM-01 lands in Phase 5.
+6. **The R-19 comparison covers 11 of the 12 filings, not all 12.**
+   SandRidge's pymupdf row was abandoned on runtime: its pdfplumber row took
+   212 s, and Peabody's pymupdf row had already taken 3,021 s for a result
+   identical to pdfplumber's. With the two libraries tied to the value on
+   every other filing, one more row was not worth the hour. The run is
+   reproducible as reported — `--cohort`, `--rows` and `--skip-accession`
+   exist for exactly this — and a full run remains available to anyone who
+   wants the missing cell. **Its absence cannot change the conclusion**: it
+   would have to differ by 60+ values to overturn a tie, against a maximum
+   observed per-filing difference of two.
+7. **`pdf-text` was measured by hand, not by the script, on one filing.** The
+   Peabody text-vs-table finding (§5) came from a targeted check of six values.
+   The `pdf-text` row now exists in the spike so it can be measured properly,
+   but it has not yet been run across the corpus — treat that finding as a
+   demonstrated mechanism, not a quantified rate.
 
 ## 5. R-19: which PDF library, measured
 
@@ -211,6 +226,47 @@ complex nested layouts. So the PDF figures below measure "reference value
 landed in an extracted table cell" — not "the extractor could not reach this
 value". A text-based line parser would recover much of the gap, which is a
 concrete option for Phase 5 if the upload path needs to do better.
+
+### Result: the libraries are indistinguishable on recall
+
+Measured over 11 of the 12 filings (SandRidge's pymupdf row was abandoned after
+its pdfplumber row took 212 s and Peabody's pymupdf row had already taken 50
+minutes — see limitations):
+
+| | Filings | Reference values | Found | Recall | Time |
+|---|---:|---:|---:|---:|---:|
+| **pdfplumber** | 11 | 271 | **179** | **66.1%** | **1,774 s** |
+| **pymupdf** | 11 | 271 | **179** | **66.1%** | 4,292 s |
+
+Not approximately equal — **equal, to the value**, on both cohorts separately
+(healthy 117/123 each; distressed 62/148 each). Per filing the two differed at
+all only three times, never by more than two values. What separates them is
+speed: **pdfplumber is 2.4× faster overall**, and on the worst filing (Peabody)
+it returned the same 6/48 in 798 s where pymupdf needed 3,021 s.
+
+The table counts differ wildly — pdfplumber reports 10,437 tables on the
+healthy cohort against pymupdf's 3,808 — while recovering exactly the same
+values. That is the clearest possible evidence for measuring recall rather than
+table counts: on table count alone pdfplumber would look 2.7× better at
+something the two do identically.
+
+### Where the PDF path actually stands
+
+| Path | 2025–26 filings | 2015–20 filings | Overall |
+|---|---:|---:|---:|
+| **HTML** (primary) | **123/123 — 100%** | 168/219 — 77% | **291/342 — 85%** |
+| **PDF** (pdfplumber) | 117/123 — 95% | 62/148 — 42% | — |
+
+Two things follow, and both matter more than the library choice:
+
+1. **On modern filings the PDF path is nearly as good as HTML** (95% vs 100%),
+   and Apple's scored 22/22 in 26 seconds. The narrowing strategy works when it
+   works.
+2. **The collapse is on older filings** (42%), and it coincides with the
+   whole-filing fallback: the filings that could not be narrowed to Item 8 are
+   the same ones that score worst, because table detection is hunting through
+   300 pages of layout scaffolding. The fix, if Phase 5 needs one, is better
+   statement isolation or a text-based line parser — not a different library.
 
 <!-- RESULTS -->
 

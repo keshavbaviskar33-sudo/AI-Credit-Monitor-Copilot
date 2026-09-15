@@ -22,6 +22,7 @@ canonical schema from Phase 5. Read the figures here as an upper bound.
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import time
@@ -176,16 +177,51 @@ EXTRACTORS = {
 }
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--cohort",
+        choices=("distressed", "healthy"),
+        help="Measure only this cohort. A full run is hours; the cohorts differ "
+        "enough in cost that measuring them separately is often what you want.",
+    )
+    parser.add_argument(
+        "--rows",
+        default=",".join(EXTRACTORS),
+        help=f"Comma-separated subset of {','.join(EXTRACTORS)} to measure.",
+    )
+    parser.add_argument(
+        "--skip-accession",
+        default="",
+        help="Comma-separated accession numbers to leave out (e.g. one filing "
+        "whose runtime is not worth the information it adds).",
+    )
+    parser.add_argument("--out-suffix", default="", help="Suffix for the output filenames.")
+    return parser.parse_args()
+
+
 def main() -> None:
     configure_logging()
+    args = _parse_args()
     if not MANIFEST.exists():
         raise FileNotFoundError(f"{MANIFEST} is missing. Run scripts/build_golden_set.py first.")
 
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     reference = pd.read_csv(REFERENCE_VALUES)
 
+    rows = [row for row in args.rows.split(",") if row.strip()]
+    unknown = set(rows) - set(EXTRACTORS)
+    if unknown:
+        raise SystemExit(f"Unknown --rows value(s): {', '.join(sorted(unknown))}")
+    skipped = {a.strip() for a in args.skip_accession.split(",") if a.strip()}
+
     results: list[dict[str, Any]] = []
     for entry in manifest["entries"]:
+        if args.cohort and entry["cohort"] != args.cohort:
+            continue
+        if entry["accession"] in skipped:
+            logger.info("%s: skipped by request", entry["company"])
+            continue
         pdf_path = Path(entry["pdf_path"])
         if not pdf_path.exists():
             logger.warning("%s: no PDF at %s; skipping", entry["company"], pdf_path)
@@ -200,7 +236,8 @@ def main() -> None:
         targets = [(concept, strings) for concept, strings in targets if strings]
 
         html_path = Path(entry["html_path"])
-        for library, extract in EXTRACTORS.items():
+        for library in rows:
+            extract = EXTRACTORS[library]
             source_path = html_path if library == "html" else pdf_path
             if not source_path.exists():
                 logger.warning("%s: %s missing; skipping", entry["company"], source_path)
@@ -232,7 +269,7 @@ def main() -> None:
             )
 
     frame = pd.DataFrame(results)
-    out_path = GOLDEN_DIR / "table_extraction_spike.csv"
+    out_path = GOLDEN_DIR / f"table_extraction_spike{args.out_suffix}.csv"
     frame.to_csv(out_path, index=False)
 
     summary = (
@@ -247,7 +284,7 @@ def main() -> None:
         .assign(recall=lambda d: (d.values_found / d.reference_values).round(4))
     )
     logger.info("R-19 spike summary:\n%s", summary.to_string())
-    (GOLDEN_DIR / "table_extraction_spike_summary.json").write_text(
+    (GOLDEN_DIR / f"table_extraction_spike_summary{args.out_suffix}.json").write_text(
         summary.to_json(orient="index", indent=2), encoding="utf-8"
     )
     logger.info("Per-filing results written to %s", out_path)

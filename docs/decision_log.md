@@ -176,11 +176,23 @@ Three ways to get a PDF corpus were considered:
 
 **Context.** [R-19](risks.md) ("library capabilities assumed but not verified, e.g. PDF table extraction quality") explicitly asks Phase 4 to **spike and measure before committing to a library**. `pyproject.toml` declared both `pdfplumber` and `pymupdf` without choosing. `scripts/table_extraction_spike.py` measures them over the golden set.
 
-**The metric is reference-value recall, not table count.** Counting tables rewards a library for finding page-layout scaffolding. What matters is whether the figures XBRL reports for a filing can be found among the cells the library extracted, allowing for the scales (units/thousands/millions) and conventions (comma grouping, parentheses for negatives) a filing may use. That is a deliberate *preview* of QM-01 and not QM-01 itself: it asks "is this number present in some extracted cell", where QM-01 asks "was it extracted as the correct labelled field". Labelling needs Phase 5's canonical schema.
+**The metric is reference-value recall, not table count.** Counting tables rewards a library for finding page-layout scaffolding. What matters is whether the figures XBRL reports for a filing can be found among the cells the library extracted, allowing for the scales (units/thousands/millions) and conventions (comma grouping, parentheses for negatives, and decimals — filings "in millions" routinely print `14,133.4`) a filing may use. That is a deliberate *preview* of QM-01 and not QM-01 itself: it asks "is this number present in some extracted cell", where QM-01 asks "was it extracted as the correct labelled field". Labelling needs Phase 5's canonical schema.
 
-**Decision.** **`pdfplumber` is the PDF extractor** (`extraction/pdf_extractor.py`). `pymupdf` is kept — it is what renders HTML to PDF for the golden set (D-014) — but is not used for extraction.
+**What the measurement found (11 of 12 filings, 271 reference values):**
+
+| | Found | Recall | Time |
+|---|---:|---:|---:|
+| pdfplumber | 179 | 66.1% | 1,774 s |
+| pymupdf | 179 | 66.1% | 4,292 s |
+
+**The two are equal, to the value** — on each cohort separately as well as overall, differing on only three individual filings and never by more than two values. They are *not* equal on cost: pdfplumber is **2.4× faster**, and on the worst filing returned the same 6/48 in 798 s where pymupdf took 3,021 s.
+
+Table counts, by contrast, differ by 2.7× (10,437 vs 3,808 on the healthy cohort) while recovering identical values — the clearest possible vindication of not using table count as the metric.
+
+**Decision.** **`pdfplumber` is the PDF extractor** (`extraction/pdf_extractor.py`), **chosen for speed, not accuracy — there is no accuracy difference to choose on.** `pymupdf` is kept because it renders HTML to PDF for the golden set (D-014), but is not used for extraction.
 
 **Consequences.**
-- One library owns document extraction, and the choice is recorded with a measurement behind it rather than a preference.
-- Both libraries share the same real weakness: borderless tables. pdfplumber's line strategy finds nothing in them, and its text strategy returns shredded cells. Financial statements in *real* uploaded PDFs are often borderless, so this is a live limitation for FR-04 uploads, not a solved problem — recorded in [risks.md](risks.md) under R-09/R-19 and revisited if upload accuracy proves insufficient.
-- `extraction/base.py`'s `DocumentExtractor` protocol keeps the library swappable, so reversing this does not reach beyond one module.
+- The honest reading is that this is a low-stakes decision. Over the same corpus the **HTML path recovers 85% of reference values against the PDF path's 66%**, and 100% on modern filings against 95% — so the library that matters most for extraction quality is `lxml`, not either PDF library. This decision governs a fallback path (FR-04 uploads), which is where it belongs.
+- **Neither library is the bottleneck; isolation is.** PDF recall is 95% on filings narrowed to their financial statements and 42% on those that fell back to whole-filing rendering. If Phase 5 needs better upload accuracy, the lever is better statement isolation or a text-based line parser — swapping libraries would buy nothing. That PDF *text* extraction finds values PDF *table* extraction misses ([golden_set.md §5](golden_set.md)) points the same way.
+- Both share one real weakness: borderless tables. pdfplumber's line strategy finds nothing in them and its text strategy returns shredded cells. Real uploaded statements are often borderless, so this is a live limitation for FR-04, not a solved problem — tracked under [R-09/R-19](risks.md).
+- `extraction/base.py`'s `DocumentExtractor` protocol keeps the library swappable, so reversing this does not reach beyond one module. Given the measured tie, reversing it would also change nothing measurable.
