@@ -173,3 +173,65 @@ def test_quality_signals_are_facts_not_invented_confidence() -> None:
     let Phase 5 judge. A fabricated confidence score would look like evidence
     without being any."""
     assert not hasattr(table(("a", "1")), "confidence")
+
+
+# --- Diagnostics and silent-failure detection -----------------------------
+
+_BODY = "This section has real content that runs on for a while. " * 12
+
+
+def filing(statements_table: str) -> str:
+    return (
+        "<body>"
+        f"<p>Item 1A. Risk Factors</p><p>{_BODY}</p>"
+        f"<p>Item 7. Management's Discussion and Analysis</p><p>{_BODY}</p>"
+        "<p>Item 8. Financial Statements and Supplementary Data</p>"
+        f"{statements_table}<p>{_BODY}</p>"
+        "<p>Item 9. Changes in and Disagreements with Accountants</p>"
+        "</body>"
+    )
+
+
+STATEMENT_TABLE = (
+    "<table>"
+    "<tr><td></td><td>2025</td><td>2024</td></tr>"
+    "<tr><td>Total assets</td><td>1,234</td><td>1,100</td></tr>"
+    "<tr><td>Total liabilities</td><td>900</td><td>850</td></tr>"
+    "</table>"
+)
+
+
+def test_diagnostics_report_what_was_found() -> None:
+    diagnostics = extract(filing(STATEMENT_TABLE)).diagnostics
+
+    assert "item_8" in diagnostics.sections_found
+    assert diagnostics.financial_tables >= 1
+    assert diagnostics.ragged_tables == 0
+    assert diagnostics.looks_complete
+
+
+def test_section_located_but_empty_of_statements_is_reported() -> None:
+    """The silent failure this exists for: Item 8 is found, but the filing put
+    the statements in an F-page appendix, so the section holds none. Two of the
+    twelve golden-set filings do exactly this."""
+    doc = extract(filing("<p>See the Index to Financial Statements on page F-1.</p>"))
+
+    assert doc.section("item_8") is not None, "section itself was located"
+    assert doc.tables_in("item_8", financial_only=True) == ()
+    assert "section_without_expected_content" in doc.diagnostics.error_counts
+
+
+def test_a_filing_with_an_empty_item_8_does_not_look_complete() -> None:
+    """Regression guard: an earlier `looks_complete` checked only for missing
+    sections and called these filings fine."""
+    doc = extract(filing("<p>See the Index to Financial Statements on page F-1.</p>"))
+
+    assert not doc.diagnostics.looks_complete
+
+
+def test_tables_in_narrows_by_section_and_by_kind() -> None:
+    doc = extract(filing(STATEMENT_TABLE))
+
+    assert len(doc.tables_in("item_8")) >= 1
+    assert len(doc.tables_in("item_1a")) == 0
+    assert all(t.looks_like_financial_data for t in doc.tables_in(financial_only=True))

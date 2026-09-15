@@ -27,7 +27,11 @@ from credit_risk_copilot.extraction.models import (
     Table,
     TextBlock,
 )
-from credit_risk_copilot.extraction.sections import assign_sections, detect_sections
+from credit_risk_copilot.extraction.sections import (
+    assign_sections,
+    check_expected_content,
+    detect_sections,
+)
 
 EXTRACTOR_NAME = "html"
 EXTRACTOR_VERSION = "1.0"
@@ -266,15 +270,18 @@ class HtmlDocumentExtractor:
         acc.flush()
 
         sections, section_errors = detect_sections(acc.text)
+        tables = assign_sections(tuple(acc.tables), sections)
         return ExtractedDocument(
             source=source,
             extractor=self.name,
             extractor_version=self.version,
             text=acc.text,
             blocks=assign_sections(tuple(acc.blocks), sections),
-            tables=assign_sections(tuple(acc.tables), sections),
+            tables=tables,
             sections=sections,
-            errors=tuple(acc.errors) + section_errors,
+            errors=tuple(acc.errors)
+            + section_errors
+            + check_expected_content(tables, sections),
         )
 
 

@@ -166,13 +166,11 @@ def _reference_rows(facts: Any, accession: str) -> list[dict[str, Any]]:
 
 
 def _stats(doc: ExtractedDocument) -> dict[str, Any]:
-    return {
-        "chars": len(doc.text),
-        "blocks": len(doc.blocks),
-        "tables": len(doc.tables),
+    """Per-path extraction stats, straight from the document's own diagnostics."""
+    diagnostics = doc.diagnostics
+    return diagnostics.model_dump() | {
         "table_rows": sum(t.n_rows for t in doc.tables),
-        "sections": [s.section_id for s in doc.sections],
-        "errors": [e.code for e in doc.errors],
+        "looks_complete": diagnostics.looks_complete,
     }
 
 

@@ -219,3 +219,52 @@ def assign_sections[T: (TextBlock, Table)](
         location = item.location.model_copy(update={"section_id": section_id})
         stamped.append(item.model_copy(update={"location": location}))
     return tuple(stamped)
+
+
+#: Sections expected to contain tabular financial data. Item 8 is the only one
+#: in the MVP, but the check is written against a set so adding Item 7's
+#: selected-data tables later needs no new machinery.
+SECTIONS_EXPECTING_TABLES = ("item_8",)
+
+
+def check_expected_content(
+    tables: tuple[Table, ...], sections: tuple[DocumentSection, ...]
+) -> tuple[ExtractionError, ...]:
+    """Flag sections that were located but hold none of the content they should.
+
+    This catches a failure that is otherwise silent, and it is not rare: on the
+    Phase 4 golden set, Frontier's and Peabody's Item 8 are both located and
+    both contain zero statement-like tables, because those filings satisfy
+    Item 8 with a cross-reference and put the statements in an appendix after
+    Item 15. Counting SandRidge, whose Item 8 is not found at all, a caller
+    naively asking for "the financial tables in Item 8" would get nothing for
+    3 of 12 filings — with no indication that anything had gone wrong.
+
+    Reporting it lets Phase 5 fall back deliberately (the statements are
+    elsewhere in the document, not absent) instead of concluding the filing has
+    no financial data.
+    """
+    errors: list[ExtractionError] = []
+    located = {s.section_id for s in sections}
+    for section_id in SECTIONS_EXPECTING_TABLES:
+        if section_id not in located:
+            continue  # already reported as section_not_found
+        present = [
+            t
+            for t in tables
+            if t.location.section_id == section_id and t.looks_like_financial_data
+        ]
+        if present:
+            continue
+        errors.append(
+            ExtractionError(
+                code="section_without_expected_content",
+                message=(
+                    f"{section_id} was located but contains no statement-like tables. "
+                    "The filing most likely cross-references an appendix (an 'Index to "
+                    "Financial Statements' on an F-page); the statements are elsewhere "
+                    "in this document, not missing."
+                ),
+            )
+        )
+    return tuple(errors)

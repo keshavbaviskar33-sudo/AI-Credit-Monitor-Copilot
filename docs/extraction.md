@@ -143,6 +143,35 @@ A required section that cannot be located with a plausible body produces a
 Detection accuracy on a real sample is measured in **Phase 10** (A-10); Phase 4
 delivers the mechanism and a filing-level sanity check (§6).
 
+## 4a. Failure visibility
+
+Anything not extracted is an `ExtractionError`, never an omission. Three codes
+matter, and the third exists because the audit found it happening:
+
+| Code | Meaning |
+|---|---|
+| `page_without_text` | A PDF page has no text layer — a scan. OCR is out of MVP scope |
+| `section_not_found` | A required item could not be located with a plausible body |
+| `section_without_expected_content` | **The section was found and holds none of the content it should** |
+
+That last one catches a failure that is otherwise completely silent. On the
+golden set, Frontier's and Peabody's Item 8 are both located and both contain
+**zero** statement-like tables, because those filings satisfy Item 8 with a
+cross-reference and put the statements in an F-page appendix after Item 15.
+With SandRidge, whose Item 8 is not found at all, a caller naively asking for
+"the financial tables in Item 8" gets nothing for **3 of 12 filings** — and
+without this check, no indication that anything went wrong. Phase 5 can now
+fall back deliberately, knowing the statements are elsewhere in the document
+rather than absent.
+
+`ExtractedDocument.diagnostics` summarises one extraction — counts, sections
+found and missing, error counts, and `looks_complete`. It reports facts, never
+a score: *"3 of 6 sections located, 147 statement-like tables, 2 pages without
+text"* tells a reader what to do; *"quality: 0.78"* does not. `looks_complete`
+is strict — any error at all fails it. An earlier, laxer version called
+Frontier and Peabody complete, which is exactly the blind spot this section is
+about.
+
 ## 5. Upload validation (FR-04)
 
 `extraction/upload.py` checks uploads before anything parses them, and every

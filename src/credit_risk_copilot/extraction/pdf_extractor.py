@@ -25,7 +25,11 @@ from credit_risk_copilot.extraction.models import (
     Table,
     TextBlock,
 )
-from credit_risk_copilot.extraction.sections import assign_sections, detect_sections
+from credit_risk_copilot.extraction.sections import (
+    assign_sections,
+    check_expected_content,
+    detect_sections,
+)
 
 EXTRACTOR_NAME = "pdf"
 EXTRACTOR_VERSION = "1.0"
@@ -99,15 +103,18 @@ class PdfDocumentExtractor:
                 page.get_textmap.cache_clear()
 
         sections, section_errors = detect_sections("".join(parts))
+        located_tables = assign_sections(tuple(tables), sections)
         return ExtractedDocument(
             source=source,
             extractor=self.name,
             extractor_version=self.version,
             text="".join(parts),
             blocks=assign_sections(tuple(blocks), sections),
-            tables=assign_sections(tuple(tables), sections),
+            tables=located_tables,
             sections=sections,
-            errors=tuple(errors) + section_errors,
+            errors=tuple(errors)
+            + section_errors
+            + check_expected_content(located_tables, sections),
         )
 
 

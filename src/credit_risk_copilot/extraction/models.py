@@ -181,3 +181,80 @@ class ExtractedDocument(BaseModel):
         if section is None:
             return None
         return self.text[section.location.char_start : section.location.char_end]
+
+    def tables_in(
+        self, section_id: str | None = None, *, financial_only: bool = False
+    ) -> tuple[Table, ...]:
+        """Tables, optionally narrowed to a section and to statement-like ones.
+
+        The query Phase 5 actually wants is "the financial tables in Item 8".
+        Spelling it here keeps the offset arithmetic in one place instead of
+        re-derived at each call site.
+        """
+        found = self.tables
+        if section_id is not None:
+            found = tuple(t for t in found if t.location.section_id == section_id)
+        if financial_only:
+            found = tuple(t for t in found if t.looks_like_financial_data)
+        return found
+
+    @property
+    def diagnostics(self) -> ExtractionDiagnostics:
+        """A summary of how well this extraction went.
+
+        Everything here is derivable from the fields above; having it in one
+        place is what makes "did this filing extract badly?" a question a
+        caller actually asks, rather than one requiring a loop over errors.
+        """
+        counts: dict[str, int] = {}
+        for error in self.errors:
+            counts[error.code] = counts.get(error.code, 0) + 1
+        return ExtractionDiagnostics(
+            characters=len(self.text),
+            blocks=len(self.blocks),
+            tables=len(self.tables),
+            financial_tables=sum(1 for t in self.tables if t.looks_like_financial_data),
+            ragged_tables=sum(1 for t in self.tables if not t.is_rectangular),
+            sections_found=tuple(s.section_id for s in self.sections),
+            sections_missing=tuple(
+                e.message.split(" (")[0].replace("Item ", "item_").lower()
+                for e in self.errors
+                if e.code == "section_not_found"
+            ),
+            error_counts=counts,
+        )
+
+
+class ExtractionDiagnostics(BaseModel):
+    """What went right and wrong in one extraction, for logging and triage.
+
+    Reports counts and names, never a score. "3 of 6 sections located, 147
+    statement-like tables, 2 pages without text" tells a reader what to do;
+    "quality: 0.78" does not.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    characters: int
+    blocks: int
+    tables: int
+    financial_tables: int
+    ragged_tables: int
+    sections_found: tuple[str, ...]
+    sections_missing: tuple[str, ...]
+    error_counts: dict[str, int]
+
+    @property
+    def looks_complete(self) -> bool:
+        """Whether the extractor reported nothing wrong at all.
+
+        Deliberately strict: **any** error counts. An earlier version checked
+        only for missing sections, and it called Frontier's and Peabody's
+        filings complete while their Item 8 held no statements — precisely the
+        silent failure this is for.
+
+        A screen for triage, not a guarantee: a document can pass this and
+        still have been extracted wrongly, which is why the counts above are
+        reported alongside rather than collapsed into it.
+        """
+        return not self.error_counts and self.ragged_tables == 0
