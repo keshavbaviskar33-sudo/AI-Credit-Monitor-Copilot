@@ -27,7 +27,7 @@
 
 | ID | Risk | Impact | Likelihood | Mitigation | Owner phase |
 |---|---|---|---|---|---|
-| R-11 | XBRL concept inconsistency (company extensions, changing tags) leaves fields missing | M | H | Alias/concept mapping with coverage metrics; explicit missing statuses | 5 |
+| R-11 | XBRL concept inconsistency (company extensions, changing tags) leaves fields missing | M→**H** | H | **Now quantified, not hypothetical (Phase 4):** over the 12-filing golden set, `Liabilities` is present for 6/12, `LongTermDebt` 7/12, `Revenues` 9/12 and the assumed `SalesRevenueNet` **0/12** — deprecated by the ASC 606 tags ([data_dictionary.md §6.1](data_dictionary.md)). Mitigation for Phase 5 is therefore mandatory, not optional: fallback chains per concept, explicit derivation rules for subtotals, derived values marked as derived in provenance, and coverage reported per field | 5 |
 | R-12 | Dataset licence blocks public use | M | M | Check licence before download; prefer openly licensed or self-built data | 3 |
 | R-13 | Demo companies leak into training data, producing a misleading demo | M | M | Hold out demo companies / periods explicitly | 3, 8 |
 | R-14 | SEC access blocked for exceeding fair-access rules | L | L | Declared User-Agent; rate limiting; local caching; nightly bulk files for large pulls | 3, 16 |

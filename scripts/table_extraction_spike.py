@@ -47,7 +47,14 @@ SCALES = (1, 1_000, 1_000_000)
 
 
 def _candidate_strings(value: float) -> set[str]:
-    """How a filing might render `value` in a table cell."""
+    """How a filing might render `value` in a table cell.
+
+    Deliberately generous, in the same direction as everything else here: a
+    negative value also matches its bare positive form, because statements
+    often carry the sign in the row label ("Less: accumulated depreciation")
+    rather than the cell. That can admit a coincidental match, which is one
+    more reason these figures are an upper bound rather than an estimate.
+    """
     out: set[str] = set()
     negative = value < 0
     for scale in SCALES:

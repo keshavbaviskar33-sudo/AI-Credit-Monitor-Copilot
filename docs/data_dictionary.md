@@ -59,7 +59,32 @@ Full-scale version of the 4-company spot-check in `data_feasibility.md §6`, run
 
 ## 6. Features (raw XBRL concepts, pre-ratio)
 
-Phase 6 defines the actual ratio engine; this is the raw `us-gaap` concept set the audit confirmed is present for sampled filers and that the ratio engine will draw on: `Assets`, `Liabilities`, `StockholdersEquity`, `AssetsCurrent`, `LiabilitiesCurrent`, `Revenues` (or `SalesRevenueNet`), `NetIncomeLoss`, `OperatingIncomeLoss`, `CashAndCashEquivalentsAtCarryingValue`, `LongTermDebt`. Exact concept-to-ratio mapping, and handling of companies that use alternate tags for the same concept, is Phase 5/6 work.
+Phase 6 defines the actual ratio engine; this is the raw `us-gaap` concept set it will draw on. Exact concept-to-ratio mapping is Phase 5/6 work.
+
+### 6.1 Measured concept coverage (Phase 4, 2026-09-15)
+
+The Phase 3 spot-check only confirmed these concepts existed for *sampled* filers. Building the golden set ([golden_set.md](golden_set.md)) measured them properly — per concept, across 12 filings spanning 2016–2026 and seven industries:
+
+| Concept | Filings | Note |
+|---|---:|---|
+| `Assets` | 12/12 | |
+| `AssetsCurrent` | 12/12 | |
+| `LiabilitiesCurrent` | 12/12 | |
+| `NetIncomeLoss` | 12/12 | |
+| `CashAndCashEquivalentsAtCarryingValue` | 12/12 | |
+| `StockholdersEquity` | 11/12 | |
+| `OperatingIncomeLoss` | 11/12 | |
+| `Revenues` | 9/12 | See below |
+| `LongTermDebt` | 7/12 | Often split into current/non-current components instead |
+| `Liabilities` | 6/12 | Many filers never tag the total; it is a presentation subtotal |
+| `SalesRevenueNet` | **0/12** | Deprecated — superseded by the ASC 606 tags |
+
+**This is the concrete form of [R-11](risks.md) and it downgrades [A-06](assumptions.md).** Five concepts are universal; the rest are not, and a ratio engine that assumes `Liabilities` or `LongTermDebt` is present would return `missing_input` for half the population.
+
+Two specific consequences for Phase 5:
+
+- **Revenue must be resolved through a fallback chain, not a single tag.** The three filings without `Revenues` (Apple, UPS, Pyxus) use `RevenueFromContractWithCustomerExcludingAssessedTax` or `...IncludingAssessedTax`. `SalesRevenueNet` should be dropped from the set entirely — it appears in none of the filings and its presence in this list was an assumption, not an observation.
+- **Derived totals need derivation rules.** `Liabilities` (6/12) is recoverable as `Assets − StockholdersEquity`, and `LongTermDebt` from its current/non-current components. Whether to derive or report `missing_input` is a Phase 5/6 decision, but it must be an explicit one, and any derived value has to be marked as derived in its provenance (FR-07).
 
 ## 7. Known limitations
 

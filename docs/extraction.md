@@ -73,6 +73,15 @@ Both satisfy the `DocumentExtractor` protocol in `extraction/base.py`, so Phase
 - A table's location is its **page's** text span, not a span of its own:
   pdfplumber finds tables geometrically, so the cells are already part of the
   page text. Appending them again would duplicate content and break offsets.
+- **Each page's cache is flushed once it is done.** pdfplumber keeps every
+  page's parsed objects on the page object and never releases them; on a few
+  hundred table-dense pages that exhausts memory — it killed the first
+  golden-set build ([golden_set.md §6](golden_set.md)). Pages are never
+  revisited, so dropping them as we go is free.
+- Table detection depends on **ruling lines**. Borderless tables — common in
+  real uploaded statements — yield nothing from the line strategy and shredded
+  cells from the text strategy. This is a known live limitation of the upload
+  path, not a solved problem (R-09/R-19).
 
 ## 4. Section detection
 

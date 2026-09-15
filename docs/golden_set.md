@@ -17,10 +17,15 @@ rerunning the script (everything is cached, so a rerun costs no SEC requests).
 ## 1. What each filing contributes
 
 ```
-filing HTML (EDGAR primary document)   ->  extracted  (HtmlDocumentExtractor)
-same HTML rendered to PDF              ->  extracted  (PdfDocumentExtractor)
-companyfacts filtered to that accession ->  reference values
+filing HTML (EDGAR primary document)      -> extracted (HtmlDocumentExtractor)
+  narrowed to Item 8, rendered to PDF     -> extracted (PdfDocumentExtractor)
+companyfacts filtered to that accession   -> reference values
 ```
+
+Both extractions run over the **same** filing, and the reference values come
+from that filing's own XBRL — so the two paths are directly comparable against
+one ground truth. The PDF is narrowed to the financial statements (§6); when
+that is not possible the whole filing is rendered instead.
 
 | File | Contents |
 |---|---|
@@ -66,6 +71,55 @@ each company's SIC rather than pre-empting that rule here.
 > a model test set. [scope.md §6](scope.md) requires demo companies to be
 > excluded from model training data; whoever builds the Phase 8 splits must
 > check this list against them rather than assume they are disjoint.
+
+### As built (2026-09-15)
+
+12 filings, **342 reference values**, spanning 2016–2026 and eleven SIC
+industries. No filing failed to extract, and none lacked XBRL reference values.
+
+| Company | Cohort | SIC | Filed | HTML tables | PDF tables | Sections |
+|---|---|---|---|---:|---:|---:|
+| Expand Energy (Chesapeake) | distressed | 1311 | 2020-02-27 | 359 | 507 | 6 |
+| iHeartMedia | distressed | 4832 | 2017-02-23 | 323 | 371 | 5 |
+| Frontier Communications | distressed | 4813 | 2020-03-31 | 275 | 953 | 6 |
+| Peabody Energy | distressed | 1221 | 2016-03-16 | 556 | 1,239 | 6 |
+| Pyxus International | distressed | 5150 | 2019-06-14 | 194 | 466 | 6 |
+| SandRidge Energy | distressed | 1311 | 2016-03-30 | 365 | 1,202 | 5 † |
+| Apple | healthy | 3571 | 2025-10-31 | 54 | 234 | 6 |
+| Tesla | healthy | 3711 | 2026-01-29 | 77 | 585 | 6 |
+| Walmart | healthy | 5331 | 2026-03-13 | 109 | 427 | 6 |
+| Pfizer | healthy | 2834 | 2026-02-26 | 264 | 274 | 6 |
+| Coca-Cola | healthy | 2080 | 2026-02-20 | 117 | 349 | 6 |
+| UPS | healthy | 4210 | 2026-02-17 | 108 | 481 | 6 |
+
+† SandRidge's **Item 8 could not be located** and is reported as
+`section_not_found` — the intended failure, since the alternative is a
+confidently wrong span. It uses the F-pages layout described below.
+
+Two patterns in this table are worth carrying forward:
+
+- **PDF table counts exceed HTML counts everywhere**, sometimes threefold
+  (Frontier 275 → 953). That is the border artefact of limitation 2, not extra
+  data recovered — and the reason §5 does not measure table counts.
+- **The F-pages layout is common in older filings.** Four of the six distressed
+  filings (2016–2020) satisfy Item 8 with a cross-reference and put the
+  statements in an appendix, so they fell back to whole-filing rendering; none
+  of the six 2025–26 filings did. Section detection tuned only on modern
+  filings would look better than it is.
+
+### Concept coverage — the most consequential finding
+
+Measuring the 342 reference values per concept turned [A-06](assumptions.md)
+from an assumption into a number, and the number is worse than assumed:
+`Liabilities` is present for **6/12** filings, `LongTermDebt` **7/12**,
+`Revenues` **9/12**, and `SalesRevenueNet` — which the Phase 3 concept list
+named as the revenue fallback — for **0/12**. It is deprecated; modern filers
+use `RevenueFromContractWithCustomerExcludingAssessedTax`.
+
+Full table and the consequences for Phase 5 are in
+[data_dictionary.md §6.1](data_dictionary.md). The short version: a ratio
+engine doing single-tag lookups would return `missing_input` for half the
+population on leverage ratios.
 
 ## 4. Limitations to carry forward
 
