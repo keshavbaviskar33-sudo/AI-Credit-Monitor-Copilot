@@ -35,8 +35,43 @@ what SC-01 ("100% of displayed values have resolvable provenance") and SC-03
 covered directly by tests in `tests/test_extraction_html.py` and
 `tests/test_extraction_pdf.py`.
 
-Format-specific detail rides alongside: `page` for PDFs, `element_path` (an
-XPath) for HTML.
+Format-specific detail rides alongside: `page` and `bbox` for PDFs,
+`element_path` (an XPath) for HTML. Blocks and tables are also stamped with the
+`section_id` they fall inside, so Phase 5 can ask for "the tables in Item 8"
+without comparing offsets by hand. Content outside every located section keeps
+`section_id=None` — nearest-guess would be worse than nothing, since a
+cover-page table is not in Item 8 just because Item 8 is closest.
+
+## 2a. What tables carry, and why
+
+A table is a **rectangular grid**: `colspan`/`rowspan` are expanded so a column
+index means the same thing in the header as in the data rows. This is
+structural, not semantic, and Phase 5 cannot reconstruct it — the information
+is gone once the raw cells are read. It matters more than it sounds. In Apple's
+FY2025 balance sheet the header row holds 4 cells and the data rows 6 or 8, so
+before expansion column index 2 meant different things on different rows and
+pairing a figure with its fiscal year was guesswork. After expansion every row
+is 12 wide and the header date sits in the same column as its values. Across
+the golden set this took Apple's filing from 47 of 54 tables ragged to **0**.
+
+Each table also carries `context`: the text immediately above it. Filings put
+the statement title and the units declaration there and **nowhere else** —
+`"Apple Inc. | CONSOLIDATED BALANCE SHEETS | (In millions, except number of
+shares...)"`. Phase 5 needs the first to identify the statement and the second
+to avoid the wrong-scale error R-09 warns about.
+
+Finally, `Table` exposes measurable structural facts — `is_rectangular`,
+`numeric_density`, `has_row_labels`, `looks_like_financial_data`. These are
+**deliberately not a confidence score**. A fabricated number would look like
+evidence without being any; these are checkable facts about the grid, and
+Phase 5 decides what they imply. `looks_like_financial_data` is a filter to
+narrow work, not a classifier to trust: on Peabody's filing it cuts 556 tables
+to 147, and a table that fails it is still returned.
+
+One characteristic to know about rather than "fix": filings put currency
+symbols in their own cells, so a `$` row's value sits one column right of an
+unprefixed row's. Expansion reproduces that faithfully rather than second-
+guessing it — matching a value to the nearest header column is Phase 5's call.
 
 ## 3. Two paths, one interface
 
@@ -147,8 +182,10 @@ rather than contents entries:
   (unusual heading wording, items split across exhibits) will report
   `section_not_found` rather than mis-locate — the safe failure, but still a
   failure. Measured properly in Phase 10.
-- Table extraction returns raw cells with no notion of which column is which
-  fiscal year, or whether figures are in thousands. Phase 5.
+- Table cells are raw strings: which column is which fiscal year, and whether
+  figures are in thousands, is Phase 5's to decide. Phase 4 supplies the
+  aligned grid and the units declaration (§2a) but draws no conclusion from
+  either.
 - Multi-document filings are not followed: only the primary document is
   extracted. Financial statements filed as separate exhibits would be missed.
 - HTML tables are matched structurally, so financial data laid out with

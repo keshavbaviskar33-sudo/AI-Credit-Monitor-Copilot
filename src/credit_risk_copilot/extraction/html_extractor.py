@@ -27,7 +27,7 @@ from credit_risk_copilot.extraction.models import (
     Table,
     TextBlock,
 )
-from credit_risk_copilot.extraction.sections import detect_sections
+from credit_risk_copilot.extraction.sections import assign_sections, detect_sections
 
 EXTRACTOR_NAME = "html"
 EXTRACTOR_VERSION = "1.0"
@@ -59,7 +59,60 @@ _BLOCK_TAGS = frozenset(
     }
 )
 
+#: How much preceding text to keep as a table's context, and how many blocks to
+#: draw it from. Three blocks covers the usual "company name / statement title /
+#: units declaration" run without dragging in the previous table's footnotes.
+_CONTEXT_BLOCKS = 3
+_CONTEXT_CHARS = 300
+
+#: Guard against a malformed `colspan="9999"` blowing up a row.
+_MAX_SPAN = 50
+
 _WHITESPACE = re.compile(r"\s+")
+
+
+def _span(cell: etree._Element, attribute: str) -> int:
+    try:
+        value = int(cell.get(attribute) or 1)
+    except ValueError:
+        return 1
+    return max(1, min(value, _MAX_SPAN))
+
+
+def _expand_grid(element: etree._Element) -> list[tuple[str, ...]]:
+    """Read a table into a rectangular grid, expanding `colspan`/`rowspan`.
+
+    This is the difference between a table Phase 5 can use and one it cannot.
+    Filings lay statements out with heavy colspan — in Apple's FY2025 balance
+    sheet the header row holds 4 cells and the data rows 6 or 8, so column
+    index 2 means different things on different rows and pairing a figure with
+    its fiscal year is guesswork. Expanded, every row is 12 wide and the header
+    date sits in the same column as its values.
+
+    Spanned cells repeat as empty strings rather than duplicating their text,
+    so a value is never counted twice.
+    """
+    grid: list[list[str]] = []
+    carried: dict[int, int] = {}  # column -> remaining rowspan rows to skip
+
+    for row_element in element.iter("tr"):
+        row: list[str] = []
+        for cell in row_element.iter("td", "th"):
+            while carried.get(len(row), 0):
+                carried[len(row)] -= 1
+                row.append("")
+            text = _clean("".join(cell.itertext()))
+            colspan = _span(cell, "colspan")
+            rowspan = _span(cell, "rowspan")
+            if rowspan > 1:
+                for offset in range(colspan):
+                    carried[len(row) + offset] = rowspan - 1
+            row.extend([text] + [""] * (colspan - 1))
+        if any(cell.strip() for cell in row):
+            grid.append(row)
+
+    width = max((len(row) for row in grid), default=0)
+    return [tuple(row + [""] * (width - len(row))) for row in grid]
 
 
 def _clean(value: str) -> str:
@@ -129,11 +182,7 @@ class _Accumulator:
         run over `text`, and a 10-K's Item 8 is almost entirely tables. Leaving
         them out of `text` would make that section look empty.
         """
-        rows: list[tuple[str, ...]] = []
-        for row in element.iter("tr"):
-            cells = tuple(_clean("".join(cell.itertext())) for cell in row.iter("td", "th"))
-            if any(cells):
-                rows.append(cells)
+        rows = _expand_grid(element)
 
         # Filings use borderless tables for page layout as well as for data;
         # a table whose every cell is empty is spacing, not lost content. It is
@@ -150,11 +199,26 @@ class _Accumulator:
             Table(
                 rows=tuple(rows),
                 caption=caption or None,
+                context=self._recent_context(),
                 location=DocumentLocation(
                     char_start=start, char_end=end, element_path=self._path(element)
                 ),
             )
         )
+
+    def _recent_context(self) -> str | None:
+        """The last few text blocks before this table.
+
+        Filings put the statement title and the units declaration in the
+        paragraphs immediately above the table -- "CONSOLIDATED BALANCE
+        SHEETS", then "(In millions, except number of shares...)". Phase 5
+        needs both to identify the statement and to avoid the wrong-scale error
+        R-09 warns about, and neither appears inside the table itself.
+        """
+        recent = [block.text for block in self.blocks[-_CONTEXT_BLOCKS:] if block.text]
+        if not recent:
+            return None
+        return " | ".join(recent)[-_CONTEXT_CHARS:]
 
     @property
     def text(self) -> str:
@@ -207,8 +271,8 @@ class HtmlDocumentExtractor:
             extractor=self.name,
             extractor_version=self.version,
             text=acc.text,
-            blocks=tuple(acc.blocks),
-            tables=tuple(acc.tables),
+            blocks=assign_sections(tuple(acc.blocks), sections),
+            tables=assign_sections(tuple(acc.tables), sections),
             sections=sections,
             errors=tuple(acc.errors) + section_errors,
         )

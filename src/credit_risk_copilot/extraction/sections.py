@@ -28,6 +28,8 @@ from credit_risk_copilot.extraction.models import (
     DocumentLocation,
     DocumentSection,
     ExtractionError,
+    Table,
+    TextBlock,
 )
 
 #: Shortest body a candidate must have to be accepted as the real section
@@ -188,3 +190,32 @@ def detect_sections(
         )
 
     return tuple(sections), tuple(errors)
+
+
+def assign_sections[T: (TextBlock, Table)](
+    items: tuple[T, ...], sections: tuple[DocumentSection, ...]
+) -> tuple[T, ...]:
+    """Stamp each block or table with the section it falls inside.
+
+    Without this a caller holding 54 tables has no way to ask for "the tables
+    in Item 8" short of comparing character offsets by hand — and Phase 5 wants
+    exactly that, since the financial statements are the only tables it cares
+    about.
+
+    Items outside every located section keep `section_id=None`, which is the
+    honest answer rather than a nearest-guess.
+    """
+    if not sections or not items:
+        return items
+
+    spans = [(s.location.char_start, s.location.char_end, s.section_id) for s in sections]
+    stamped: list[T] = []
+    for item in items:
+        start = item.location.char_start
+        section_id = next((sid for low, high, sid in spans if low <= start < high), None)
+        if section_id is None:
+            stamped.append(item)
+            continue
+        location = item.location.model_copy(update={"section_id": section_id})
+        stamped.append(item.model_copy(update={"location": location}))
+    return tuple(stamped)

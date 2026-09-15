@@ -31,6 +31,9 @@ class DocumentLocation(BaseModel):
     page: int | None = Field(default=None, ge=1)
     element_path: str | None = None
     section_id: str | None = None
+    #: PDF only: (x0, top, x1, bottom) in PDF points, for highlighting a region
+    #: back to the analyst and for locating text around a table.
+    bbox: tuple[float, float, float, float] | None = None
 
 
 class TextBlock(BaseModel):
@@ -43,11 +46,17 @@ class TextBlock(BaseModel):
 
 
 class Table(BaseModel):
-    """A tabular region, kept as raw cell strings.
+    """A tabular region, kept as raw cell strings on a rectangular grid.
 
-    No interpretation happens here: units, signs, parentheses-as-negative and
-    column-to-period mapping are all Phase 5's normalisation problem. Rows are
-    ragged in real filings, so no rectangularity is enforced.
+    No *interpretation* happens here: units, signs, parentheses-as-negative and
+    which column is which fiscal year are Phase 5's problem. What does happen is
+    *structural* normalisation, which Phase 5 cannot recover on its own —
+    `colspan`/`rowspan` are expanded so every row has the same width and a
+    column index means the same thing in the header as in the data rows.
+
+    The properties below report measurable facts about the grid. They are
+    deliberately not a "confidence score": an invented number would look like
+    evidence without being any. Phase 5 decides what the facts imply.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -55,6 +64,11 @@ class Table(BaseModel):
     rows: tuple[tuple[str, ...], ...]
     location: DocumentLocation
     caption: str | None = None
+    #: Text immediately preceding the table — in filings this is where the
+    #: statement title and the units declaration live ("CONSOLIDATED BALANCE
+    #: SHEETS", "(In millions, except share data)"). Phase 5 needs both, and
+    #: neither is inside the table.
+    context: str | None = None
 
     @property
     def n_rows(self) -> int:
@@ -63,6 +77,41 @@ class Table(BaseModel):
     @property
     def n_cols(self) -> int:
         return max((len(row) for row in self.rows), default=0)
+
+    @property
+    def is_rectangular(self) -> bool:
+        """Whether every row has the same width, so column indices line up."""
+        return len({len(row) for row in self.rows}) <= 1
+
+    @property
+    def numeric_density(self) -> float:
+        """Fraction of non-empty cells containing a digit.
+
+        Filings use tables for page layout as much as for data; density
+        separates the two far more reliably than size does.
+        """
+        cells = [cell for row in self.rows for cell in row if cell.strip()]
+        if not cells:
+            return 0.0
+        return sum(1 for cell in cells if any(c.isdigit() for c in cell)) / len(cells)
+
+    @property
+    def has_row_labels(self) -> bool:
+        """Whether the first column reads as labels rather than figures."""
+        first = [row[0].strip() for row in self.rows if row and row[0].strip()]
+        if not first:
+            return False
+        wordy = sum(1 for cell in first if any(c.isalpha() for c in cell))
+        return wordy / len(first) > 0.5
+
+    @property
+    def looks_like_financial_data(self) -> bool:
+        """A cheap screen so Phase 5 can skip page-layout scaffolding.
+
+        Intentionally permissive: it is a filter to narrow work, not a
+        classifier to trust. A table failing this is still returned.
+        """
+        return self.n_rows >= 3 and self.numeric_density >= 0.25 and self.has_row_labels
 
 
 class DocumentSection(BaseModel):

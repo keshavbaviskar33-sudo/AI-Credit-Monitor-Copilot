@@ -25,12 +25,17 @@ from credit_risk_copilot.extraction.models import (
     Table,
     TextBlock,
 )
-from credit_risk_copilot.extraction.sections import detect_sections
+from credit_risk_copilot.extraction.sections import assign_sections, detect_sections
 
 EXTRACTOR_NAME = "pdf"
 EXTRACTOR_VERSION = "1.0"
 
 PDF_MAGIC = b"%PDF-"
+
+#: How much text above a table to keep as its context — enough for the
+#: statement title and the units declaration, not the previous table.
+CONTEXT_LINES = 3
+CONTEXT_CHARS = 300
 
 
 class PdfDocumentExtractor:
@@ -99,8 +104,8 @@ class PdfDocumentExtractor:
             extractor=self.name,
             extractor_version=self.version,
             text="".join(parts),
-            blocks=tuple(blocks),
-            tables=tuple(tables),
+            blocks=assign_sections(tuple(blocks), sections),
+            tables=assign_sections(tuple(tables), sections),
             sections=sections,
             errors=tuple(errors) + section_errors,
         )
@@ -113,16 +118,21 @@ def _page_tables(
     page_end: int,
     errors: list[ExtractionError],
 ) -> list[Table]:
-    """Tables on one page.
+    """Tables on one page, with their bounding box and the text above them.
 
-    A table's location is its page's text span, not a span of its own:
+    A table's character span is its *page's* span, not one of its own:
     pdfplumber finds tables geometrically, so the cells are already part of the
     page text appended by the caller. Appending them again would duplicate
-    content in `text` and break the character offsets that quotes rely on.
+    content in `text` and break the offsets that quotes rely on. The `bbox`
+    carries the precise position instead.
+
+    `find_tables()` is used rather than `extract_tables()` purely to reach that
+    bbox — the latter is implemented as the former plus `.extract()`, so the
+    cells are identical.
     """
     found: list[Table] = []
     try:
-        raw_tables = page.extract_tables()
+        finder = page.find_tables()
     except Exception as exc:  # pdfplumber raises assorted errors on odd layouts
         errors.append(
             ExtractionError(
@@ -132,7 +142,19 @@ def _page_tables(
         )
         return found
 
-    for raw in raw_tables:
+    lines: list[Any] | None = None
+    for table in finder:
+        try:
+            raw = table.extract()
+        except Exception as exc:
+            errors.append(
+                ExtractionError(
+                    code="table_extraction_failed",
+                    message=f"A table on page {page_number} could not be read: {exc}",
+                )
+            )
+            continue
+
         rows = tuple(
             tuple((cell or "").strip().replace("\n", " ") for cell in row)
             for row in raw
@@ -140,15 +162,45 @@ def _page_tables(
         )
         if not rows:
             continue
-        found.append(
-            Table(
-                rows=rows,
-                location=DocumentLocation(
-                    char_start=page_start, char_end=page_end, page=page_number
-                ),
-            )
+
+        candidate = Table(
+            rows=rows,
+            location=DocumentLocation(
+                char_start=page_start,
+                char_end=page_end,
+                page=page_number,
+                bbox=tuple(float(v) for v in table.bbox),  # type: ignore[arg-type]
+            ),
         )
+        # The statement title and units declaration sit above the table, not in
+        # it. Only worth the text pass for tables that could be a statement --
+        # a dense filing carries thousands of layout tables and paying for each
+        # would multiply the cost of the slowest path in the pipeline.
+        if candidate.looks_like_financial_data:
+            if lines is None:
+                lines = _text_lines(page)
+            candidate = candidate.model_copy(
+                update={"context": _context_above(lines, table.bbox[1])}
+            )
+        found.append(candidate)
     return found
+
+
+def _text_lines(page: pdfplumber.page.Page) -> list[Any]:
+    try:
+        return list(page.extract_text_lines())
+    except Exception:
+        return []
+
+
+def _context_above(lines: list[Any], top: float) -> str | None:
+    """The last few text lines ending above `top`."""
+    above = [ln for ln in lines if ln.get("bottom", 0) <= top]
+    if not above:
+        return None
+    recent = [str(ln.get("text", "")).strip() for ln in above[-CONTEXT_LINES:]]
+    joined = " | ".join(line for line in recent if line)
+    return joined[-CONTEXT_CHARS:] or None
 
 
 def open_pdf(content: bytes) -> Any:

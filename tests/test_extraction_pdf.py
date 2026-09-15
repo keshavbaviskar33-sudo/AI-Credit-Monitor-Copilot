@@ -220,3 +220,33 @@ def test_prepare_keeps_inline_styles() -> None:
 
     assert "width:600px" in prepared
     assert "width:300px" in prepared
+
+
+def test_pdf_tables_carry_a_bounding_box() -> None:
+    """bbox is the PDF equivalent of the HTML element path: it locates the
+    table precisely enough to highlight it back to an analyst later."""
+    doc = extract(html_to_pdf(TABLE_HTML))
+    bbox = doc.tables[0].location.bbox
+
+    assert bbox is not None
+    x0, top, x1, bottom = bbox
+    assert x1 > x0 and bottom > top
+
+
+def test_pdf_table_context_captures_the_text_above_it() -> None:
+    html = (
+        "<html><body>"
+        "<p>CONSOLIDATED BALANCE SHEETS</p>"
+        "<p>(In millions)</p>"
+        "<table>"
+        "<tr><th>Item</th><th>2025</th></tr>"
+        "<tr><td>Total assets</td><td>1,234</td></tr>"
+        "<tr><td>Total liabilities</td><td>900</td></tr>"
+        "<tr><td>Total equity</td><td>334</td></tr>"
+        "</table></body></html>"
+    )
+
+    doc = extract(html_to_pdf(html))
+    context = doc.tables[0].context or ""
+
+    assert "BALANCE SHEETS" in context
