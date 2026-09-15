@@ -36,7 +36,7 @@ import pandas as pd
 from credit_risk_copilot.extraction import DocumentSource, HtmlDocumentExtractor
 from credit_risk_copilot.extraction.models import ExtractedDocument
 from credit_risk_copilot.extraction.pdf_extractor import PdfDocumentExtractor
-from credit_risk_copilot.extraction.render import html_to_pdf
+from credit_risk_copilot.extraction.render import html_to_pdf, prepare_for_render
 from credit_risk_copilot.logging_config import configure_logging
 from credit_risk_copilot.sec_edgar import FilingRef, SecEdgarClient
 
@@ -203,7 +203,7 @@ def _process(
     pdf_path = GOLDEN_DIR / "pdf" / f"{filing.accession_compact}.pdf"
     if not pdf_path.exists():
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
-        pdf_path.write_bytes(html_to_pdf(content.decode("utf-8", errors="replace")))
+        pdf_path.write_bytes(html_to_pdf(prepare_for_render(content)))
     pdf_doc = PdfDocumentExtractor().extract(
         pdf_path.read_bytes(),
         source.model_copy(update={"media_type": "application/pdf"}),

@@ -12,7 +12,6 @@ number as well as a character span.
 from __future__ import annotations
 
 import io
-import logging
 from typing import Any
 
 import pdfplumber
@@ -27,8 +26,6 @@ from credit_risk_copilot.extraction.models import (
     TextBlock,
 )
 from credit_risk_copilot.extraction.sections import detect_sections
-
-logger = logging.getLogger(__name__)
 
 EXTRACTOR_NAME = "pdf"
 EXTRACTOR_VERSION = "1.0"
@@ -89,6 +86,12 @@ class PdfDocumentExtractor:
                     )
 
                 tables.extend(_page_tables(page, page_number, page_start, length, errors))
+
+                # pdfplumber caches every page's parsed objects on the page and
+                # never releases them, so a few hundred table-dense pages will
+                # exhaust memory. We never revisit a page, so drop it now.
+                page.flush_cache()
+                page.get_textmap.cache_clear()
 
         sections, section_errors = detect_sections("".join(parts))
         return ExtractedDocument(

@@ -12,7 +12,7 @@ import pytest
 from credit_risk_copilot.extraction import DocumentSource, PdfDocumentExtractor
 from credit_risk_copilot.extraction.base import DocumentExtractionError
 from credit_risk_copilot.extraction.models import ExtractedDocument
-from credit_risk_copilot.extraction.render import TABLE_CSS, html_to_pdf
+from credit_risk_copilot.extraction.render import TABLE_CSS, html_to_pdf, prepare_for_render
 
 SOURCE = DocumentSource(uri="statements.pdf", media_type="application/pdf")
 
@@ -138,3 +138,85 @@ def test_extractor_identity_is_recorded() -> None:
 
     assert doc.extractor == "pdf"
     assert doc.extractor_version
+
+
+# --- Preparing filing HTML for rendering ----------------------------------
+
+BODY_TEXT = "Discussion text that runs on for a while to give the section a body. " * 8
+# Comfortably over MIN_SLICE_BYTES: the fallback guard is sized for real
+# filings, so a toy fixture would trip it and look like a slicing failure.
+STATEMENTS = "Consolidated balance sheet line items and figures follow here. " * 1200
+
+
+def filing_html(*, wrapped: bool, statements: str = STATEMENTS) -> bytes:
+    """A miniature filing. `wrapped` puts everything under one container div,
+    the way iHeartMedia's and Chesapeake's filings do."""
+    blocks = "".join(
+        f"<div>{part}</div>"
+        for part in [
+            "Item 1A. Risk Factors",
+            BODY_TEXT,
+            "Item 7. Management's Discussion and Analysis",
+            BODY_TEXT,
+            "Item 8. Financial Statements and Supplementary Data",
+            statements,
+            "Item 9. Changes in and Disagreements with Accountants",
+            BODY_TEXT,
+        ]
+    )
+    inner = f"<div>{blocks}</div>" if wrapped else blocks
+    return f"<html><body>{inner}</body></html>".encode()
+
+
+def test_prepare_narrows_to_the_financial_statements() -> None:
+    prepared = prepare_for_render(filing_html(wrapped=False))
+
+    assert "Consolidated balance sheet" in prepared
+    assert "Risk Factors" not in prepared
+
+
+def test_prepare_descends_past_a_single_wrapper_div() -> None:
+    """Some filings wrap the whole document in one div; slicing the body
+    would then be a no-op and render the entire filing."""
+    prepared = prepare_for_render(filing_html(wrapped=True))
+
+    assert "Consolidated balance sheet" in prepared
+    assert "Risk Factors" not in prepared
+
+
+def test_prepare_falls_back_when_item_8_is_only_a_cross_reference() -> None:
+    """Filings often satisfy Item 8 with "see the index on page F-1" and put
+    the statements in an appendix. Narrowing to that would yield an empty PDF,
+    so the whole filing is rendered instead."""
+    tiny = "See the Index to Consolidated Financial Statements on page F-1."
+
+    prepared = prepare_for_render(filing_html(wrapped=False, statements=tiny))
+
+    assert "Risk Factors" in prepared, "should have fallen back to the whole filing"
+
+
+def test_prepare_keeps_the_whole_filing_when_asked() -> None:
+    prepared = prepare_for_render(filing_html(wrapped=False), financial_statements_only=False)
+
+    assert "Risk Factors" in prepared
+    assert "Consolidated balance sheet" in prepared
+
+
+def test_prepare_keeps_inline_styles() -> None:
+    """Stripping `style` was tried and measured: modern filings carry their
+    table column widths there, and without them a many-column statement wraps
+    a character per line and never converges (41 pages -> 2,500+)."""
+    html = (
+        "<html><body>"
+        "<div>Item 8. Financial Statements and Supplementary Data</div>"
+        '<table style="width:600px"><tr><td style="width:300px">Total assets</td>'
+        "<td>1,234</td></tr></table>"
+        f"<div>{STATEMENTS}</div>"
+        "<div>Item 9. Changes in and Disagreements with Accountants</div>"
+        "</body></html>"
+    ).encode()
+
+    prepared = prepare_for_render(html)
+
+    assert "width:600px" in prepared
+    assert "width:300px" in prepared

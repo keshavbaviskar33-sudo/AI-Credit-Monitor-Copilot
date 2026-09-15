@@ -78,9 +78,16 @@ each company's SIC rather than pre-empting that rule here.
    use purely for page layout. Table *counts* on the PDF path are consequently
    inflated relative to HTML — a counting artefact, not extra data. This is why
    §5 measures reference-value recall instead of table counts.
-3. **BRD stops at December 2022**, so no bankruptcy after that date is labelled
+3. **The PDF holds the financial statements, not the whole filing.**
+   `render.prepare_for_render` narrows each filing to Item 8 (see §6). That
+   matches what QM-01 measures and what FR-04 users actually upload, but it
+   means the PDF path cannot be used to evaluate narrative-section detection —
+   that stays an HTML-path concern (A-10, Phase 10). When Item 8 cannot be
+   isolated confidently the whole filing is rendered instead, so a few entries
+   are full-length.
+4. **BRD stops at December 2022**, so no bankruptcy after that date is labelled
    ([D-013](decision_log.md)); the distressed cohort cannot include recent events.
-4. **Twelve filings is small.** It is enough to catch systematic extraction
+5. **Twelve filings is small.** It is enough to catch systematic extraction
    failures, not to produce a tight accuracy estimate. Report intervals, not
    just point estimates, when QM-01 lands in Phase 5.
 
@@ -115,3 +122,45 @@ This matters beyond the golden set: **real uploaded financial statements are
 often borderless**, so this is a live limitation of the FR-04 upload path, not a
 solved problem. It is recorded under [R-09/R-19](risks.md) and guarded by a
 regression test (`tests/test_extraction_pdf.py::test_borderless_render_is_why_the_table_css_exists`).
+
+## 6. Rendering cost, and a hypothesis that measurement killed
+
+The first build attempt was killed by the operating system for exhausting
+memory. Diagnosing it produced three findings worth recording, because two of
+them contradict the obvious fix.
+
+**Filing HTML must not have its presentation attributes stripped.** Stripping
+inline `style` looked like an easy win — it took iHeartMedia's 2016 filing from
+a ten-minute render to one second. It is also wrong. Modern filings carry their
+table *column widths* in inline `style`; without them a many-column financial
+statement gets near-zero column widths and wraps one character per line.
+Measured on Apple's FY2025 10-K:
+
+| Apple FY2025 10-K (Item 8) | Pages | PDF size | Render |
+|---|---:|---:|---:|
+| As filed | 41 | 2.9 MB | < 1 s |
+| With `style` stripped | 2,500+ (did not converge) | 65 MB | 7 s |
+
+**Narrowing to the financial statements is the fix that holds.** It bounds the
+work without touching the filing's own markup, and produces the more faithful
+artefact besides. Isolating Item 8 has to descend past single-child wrappers
+first: Apple's filing puts ~800 siblings directly under `<body>`, while
+iHeartMedia's and Chesapeake's wrap the whole document in one `<div>`, where
+slicing the body would be a silent no-op.
+
+**The expensive step is table extraction, not rendering.** After narrowing,
+end-to-end cost is dominated by pdfplumber:
+
+| Filing | Pages | Render | Extract | Reference values recovered |
+|---|---:|---:|---:|---|
+| Apple FY2025 | 40 | < 1 s | 29 s | **10 / 10** |
+| iHeartMedia 2016 | 80 | 2 s | 77 s | — |
+| Chesapeake 2019 | 152 | 6 s | 179 s | — |
+
+pdfplumber caches each page's parsed objects and never releases them, so a few
+hundred table-dense pages exhaust memory — the original crash.
+`PdfDocumentExtractor` now flushes each page's cache once it is done with it.
+
+The Apple row is the load-bearing one: all ten XBRL reference values for that
+filing are recoverable from cells extracted out of the generated PDF, which is
+what makes the corpus usable for QM-01 at all.
