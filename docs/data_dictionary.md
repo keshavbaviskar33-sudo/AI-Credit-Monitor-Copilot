@@ -81,10 +81,10 @@ The Phase 3 spot-check only confirmed these concepts existed for *sampled* filer
 
 **This is the concrete form of [R-11](risks.md) and it downgrades [A-06](assumptions.md).** Five concepts are universal; the rest are not, and a ratio engine that assumes `Liabilities` or `LongTermDebt` is present would return `missing_input` for half the population.
 
-Two specific consequences for Phase 5:
+Two specific consequences, both acted on in Phase 5 ([canonical_schema.md](canonical_schema.md), [D-016](decision_log.md)):
 
-- **Revenue must be resolved through a fallback chain, not a single tag.** The three filings without `Revenues` (Apple, UPS, Pyxus) use `RevenueFromContractWithCustomerExcludingAssessedTax` or `...IncludingAssessedTax`. `SalesRevenueNet` should be dropped from the set entirely — it appears in none of the filings and its presence in this list was an assumption, not an observation.
-- **Derived totals need derivation rules.** `Liabilities` (6/12) is recoverable as `Assets − StockholdersEquity`, and `LongTermDebt` from its current/non-current components. Whether to derive or report `missing_input` is a Phase 5/6 decision, but it must be an explicit one, and any derived value has to be marked as derived in its provenance (FR-07).
+- **Revenue is resolved through a fallback chain, not a single tag.** The three filings without `Revenues` (Apple, UPS, Pyxus) use `RevenueFromContractWithCustomerExcludingAssessedTax` or `...IncludingAssessedTax`. `SalesRevenueNet` is dropped from the canonical fallback chain entirely — it appears in none of the filings and its presence in this list was an assumption, not an observation.
+- **Derived totals use explicit derivation rules.** `Liabilities` (6/12) is recovered as `Assets − StockholdersEquity`, and `total_debt` from `short_term_debt + long_term_debt`. Every derived value is marked `origin=DERIVED` with its formula in provenance (FR-07) — never presented as if the filer reported it.
 
 ## 7. Known limitations
 

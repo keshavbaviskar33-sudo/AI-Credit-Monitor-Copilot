@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Phase 4 complete — document extraction and golden set delivered; Phase 5 next |
-| **Date** | 2026-09-15 |
+| **Status** | Phase 5 complete — canonical financial schema and XBRL resolver delivered; Phase 6 next |
+| **Date** | 2026-09-16 |
 
 Phases are completed one at a time. Each phase ends with tests/checks, a
 status report and an explicit go-ahead before the next phase starts.
@@ -16,7 +16,7 @@ status report and an explicit go-ahead before the next phase starts.
 | 2 | Engineering environment & repository | ✅ Complete | Confirmed Python 3.12 library compatibility ([engineering_setup.md](engineering_setup.md)); initial UI framework accepted ([D-012](decision_log.md)) |
 | 3 | Data acquisition & understanding | ✅ Complete | Dataset decision gate resolved: Candidate B primary, audited at full scale — 178 usable positive events, ~7,973-company candidate negative universe ([D-013](decision_log.md), [data_dictionary.md](data_dictionary.md)). Point-in-time feature extraction and the actual negative-class sample are Phase 5/8 work |
 | 4 | Document extraction | ✅ Complete | Golden set built: 12 filings, 342 XBRL reference values ([golden_set.md](golden_set.md)). **HTML path recovers 85% of reference values (100% on 2025–26 filings)** — first evidence the primary path works. HTML is primary and golden-set PDFs are generated, since SEC publishes no PDFs ([D-014](decision_log.md)); R-19 closed by measurement — the two PDF libraries tied 179/179, so pdfplumber is chosen on speed ([D-015](decision_log.md)). Also delivered: item-section detection for Phase 10 and upload validation for FR-04 ([extraction.md](extraction.md)). **Raised R-11 to High:** concept coverage is far thinner than assumed ([data_dictionary.md §6.1](data_dictionary.md)) |
-| 5 | Financial statement parsing | Not started | Introduces typed domain models with provenance; XBRL ingestion with point-in-time rule (D-005, D-008). **Phase 4 hands it three concrete requirements:** per-concept fallback chains (`SalesRevenueNet` is dead, 0/12; ASC 606 tags replace it), derivation rules for subtotals filers do not tag (`Liabilities` 6/12), and derived values marked as derived in provenance. QM-01's number also lands here, against the Phase 4 golden set |
+| 5 | Financial statement parsing | ✅ Complete (audited) | Typed canonical schema with provenance ([canonical_schema.md](canonical_schema.md)): 26 concepts, per-concept XBRL tag policies and derivation rules ([D-016](decision_log.md), [D-018](decision_log.md)), annual-period and unit filtering, accounting-consistency validation, and bounded HTML corroboration ([D-017](decision_log.md)). **QM-01: 97.2% value/period accuracy** (247/254; the 7 misses are a ground-truth definition difference, 0 wrong values), 88.8% mean concept completeness, 12/12 independent balance-sheet checks. The audit found and fixed circular validation, liabilities overstated by noncontrolling interest, and debt understated by reading components as alternatives. Table-to-period alignment for FR-04 uploads deferred |
 | 6 | Deterministic ratio engine | Not started | Ratio definitions shared with ML features |
 | 7 | Financial health analysis | Not started | Thresholds in configuration; industry-aware hooks |
 | 8 | Baseline ML model (logistic regression) | Not started | Out-of-time split; transparent ratio baseline for comparison |

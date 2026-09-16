@@ -23,6 +23,9 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-013](#d-013-training-data-candidate-b-self-built-sec--brd-as-primary) | Training data: Candidate B (self-built SEC + BRD) as primary | Accepted | 2026-09-14 |
 | [D-014](#d-014-html-is-the-primary-document-path-golden-set-pdfs-are-generated) | HTML is the primary document path; golden-set PDFs are generated | Accepted | 2026-09-15 |
 | [D-015](#d-015-pdf-library-pdfplumber-for-text-and-tables) | PDF library: pdfplumber for text and tables | Accepted | 2026-09-15 |
+| [D-016](#d-016-canonical-concept-set-fallback-chains-and-derivation-over-single-tag-mapping) | Canonical concept set: fallback chains and derivation over single-tag mapping | Accepted | 2026-09-16 |
+| [D-017](#d-017-xbrl-is-phase-5s-primary-input-document-reconciliation-stays-small-and-secondary) | XBRL is Phase 5's primary input; document reconciliation stays small and secondary | Accepted | 2026-09-16 |
+| [D-018](#d-018-tag-chains-declare-how-their-tags-relate-equity-is-split-by-scope) | Tag chains declare how their tags relate; equity is split by scope | Accepted | 2026-09-16 |
 
 ---
 
@@ -196,3 +199,48 @@ Table counts, by contrast, differ by 2.7× (10,437 vs 3,808 on the healthy cohor
 - **Neither library is the bottleneck; isolation is.** PDF recall is 95% on filings narrowed to their financial statements and 42% on those that fell back to whole-filing rendering. If Phase 5 needs better upload accuracy, the lever is better statement isolation or a text-based line parser — swapping libraries would buy nothing. That PDF *text* extraction finds values PDF *table* extraction misses ([golden_set.md §5](golden_set.md)) points the same way.
 - Both share one real weakness: borderless tables. pdfplumber's line strategy finds nothing in them and its text strategy returns shredded cells. Real uploaded statements are often borderless, so this is a live limitation for FR-04, not a solved problem — tracked under [R-09/R-19](risks.md).
 - `extraction/base.py`'s `DocumentExtractor` protocol keeps the library swappable, so reversing this does not reach beyond one module. Given the measured tie, reversing it would also change nothing measurable.
+
+## D-016 Canonical concept set: fallback chains and derivation over single-tag mapping
+**Status:** Accepted (delegated to engineering judgement, 2026-09-16) — design in [canonical_schema.md](canonical_schema.md), resolves the mandatory mitigation [R-11](risks.md) named.
+
+**Context.** [R-11](risks.md)/[A-06](assumptions.md) measured that a single XBRL tag per canonical concept fails for roughly half the golden set: `Liabilities` 6/12, `LongTermDebt` 7/12, `Revenues` 9/12, and the Phase 3 concept list's assumed revenue fallback `SalesRevenueNet` **0/12** — it is deprecated. Phase 5 had to decide how to map a canonical concept to XBRL reality without either (a) accepting that failure rate, or (b) blindly summing whatever tags happen to be present.
+
+**Decision.** Every canonical concept in `financials/concept_map.py` carries an **ordered tuple of XBRL tags** tried in priority order, plus, where no tag is reliable, an explicit **derivation rule** stating the accounting relationship (`total_liabilities = total_assets - shareholders_equity`; `total_debt = short_term_debt + long_term_debt`). `resolver.py` runs two passes — direct tags, then one derivation pass — and marks a `DERIVED` fact's `formula` and `origin` so it is never mistaken for a reported figure (FR-07). When two tags in a chain are both present and disagree beyond rounding, the fact is `CONFLICTING`, not silently resolved to one of them.
+
+**Alternatives.**
+- **Single tag per concept**, as the original Phase 3 concept list assumed — ruled out by the measurement itself.
+- **Blind summation of any XBRL fact that "looks related"** — rejected per the phase brief's explicit instruction not to assume candidates can simply be summed; every derivation here states the specific accounting identity it relies on.
+
+**Consequences.** QM-01 (measured in [canonical_schema.md §12](canonical_schema.md)) shows the design working as intended: `total_liabilities`'s coverage rises from 6/12 raw-tag filings to a materially higher canonical completeness once the derivation is added, and `revenue` resolves for filers (Apple, UPS, Pyxus) that tag no `Revenues` concept at all. The residual gap is concrete and named, not hidden: `short_term_debt`/`long_term_debt` remain the weakest concepts (~32% completeness) because filers split debt across more tag variants than this phase's chains cover yet — a sizing decision against the 12-filing golden set, not a structural limitation, and listed as a deferred idea.
+
+## D-017 XBRL is Phase 5's primary input; document reconciliation stays small and secondary
+**Status:** Accepted (delegated to engineering judgement, 2026-09-16) — design in [canonical_schema.md §1, §7](canonical_schema.md).
+
+**Context.** [D-005](decision_log.md) already established XBRL as the source of record for SEC filers. Phase 5's own brief (§13) separately asks for "source reconciliation" across whatever evidence Phase 4 produced (XBRL, HTML, PDF) — but also explicitly warns against building "an enormous reconciliation framework." Phase 5 had to decide how much of that framework was actually worth building now.
+
+**Decision.** The resolver (`resolver.resolve_filing`) reads **only** XBRL `companyfacts`; it does not parse Phase 4's document tables into facts at all. A single, one-directional function (`reconciliation.corroborate_filing`) separately checks whether an already-resolved XBRL value is *also* independently visible in the filing's own cached HTML tables, reusing Phase 4's extraction and a numeric-rendering helper adapted from the Phase 4 R-19 spike. Finding it raises confidence and adds a provenance entry; not finding it changes nothing, because HTML recall on this same golden set is measured at 85.1%, not 100% ([golden_set.md §3](golden_set.md)) — treating absence as a conflict would manufacture distrust the data does not support.
+
+**Alternatives.**
+- **A general N-way reconciliation engine** comparing XBRL, HTML and PDF for every fact — rejected as the "enormous framework" the brief warns against, for a benefit (catching a genuine XBRL-vs-filing-text disagreement) never observed in the golden set.
+- **No document reconciliation at all** — simpler, but forgoes a cheap, real corroboration signal (measured at 73.6% after the Phase 5 audit, [canonical_schema.md §12](canonical_schema.md)) that costs one extra HTML extraction Phase 4 already knows how to do, and gives up a mechanism for the (currently unobserved but plausible) case where XBRL and the filing's own text genuinely disagree.
+
+**Consequences.** The PDF path is not used for reconciliation at all — only HTML, per [D-014](decision_log.md)'s primacy — so this decision inherits PDF's known weaknesses (borderless tables, older-filing recall) as "out of scope for corroboration," not as a gap to close here. If a future phase needs PDF-sourced canonicalization (e.g. an FR-04 upload with no XBRL at all), that is new resolver work, not an extension of this reconciliation function.
+
+## D-018 Tag chains declare how their tags relate; equity is split by scope
+**Status:** Accepted (delegated to engineering judgement, Phase 5 audit, 2026-09-16) — refines [D-016](#d-016-canonical-concept-set-fallback-chains-and-derivation-over-single-tag-mapping); detail in [canonical_schema.md §3, §15](canonical_schema.md).
+
+**Context.** D-016 gave each concept an ordered list of XBRL tags, resolved by "highest-priority present tag wins; disagreement is a conflict". The Phase 5 audit ran the resolver against the golden set and found that rule false for most chains. Tags in one chain relate in three different ways, and treating them identically produced two failure modes: 32 correct values discarded as false conflicts, and — worse — silently understated debt, because additive components were read as alternatives (Apple's short-term debt omitted 7,979M of commercial paper and was returned as a confident `FOUND`). Separately, parent-only and total equity shared one chain, so the `total_liabilities` derivation subtracted the wrong equity and overstated liabilities by the noncontrolling interest (Tesla: 728M), while the balance-sheet validation confirmed the value using the same identity it was derived from.
+
+**Decision.**
+- Every concept declares a `TagResolution`: `ALTERNATES` (synonyms; disagreement is a conflict), `PREFERRED_SCOPE` (different scopes; keep the preferred value and record the others as candidates), or `COMPONENTS` (additive groups, each with alternative tagging, summed — never added within a group).
+- Equity becomes three concepts: `shareholders_equity` (parent), `noncontrolling_interest`, and `total_equity`. The balance-sheet identity and the `total_liabilities` derivation use `total_equity`.
+- Derived facts record `derived_from`, and validation refuses to score a check whose result is guaranteed by how an input was derived.
+- Derivation runs to a fixpoint; only USD facts are candidates; synonym agreement tolerance tightens from 1% to 0.1%; one tag with two values for one period is a conflict.
+
+**Alternatives.**
+- **Keep flat chains and widen the tag lists** — would have added tags without fixing double counting or the scope conflicts; rejected by the Apple and Walmart debt figures.
+- **Sum every related tag** — rejected for capital expenditures specifically, where the data cannot distinguish additive from overlapping tags; it stays `ALTERNATES` and conflicts visibly.
+- **A full concept ontology** — unnecessary: three explicit policies covered every conflict observed.
+
+**Consequences.** Value/period accuracy 87.0% → 97.2%, with the 7 remaining mismatches all a documented ground-truth definition difference (`LongTermDebt` reference rows); `CONFLICTING` facts 50 → 3; `total_debt` completeness 25% → 86%, cross-checked against filers' own debt totals. The balance-sheet check's reported pass count falls from 19 to 12 because the circular ones are no longer counted — a more honest number, not a regression. Each concept's policy is now a reviewable claim about accounting meaning, so a wrong policy is a one-line, testable fix rather than a hidden resolver behaviour.
+
