@@ -26,6 +26,9 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-016](#d-016-canonical-concept-set-fallback-chains-and-derivation-over-single-tag-mapping) | Canonical concept set: fallback chains and derivation over single-tag mapping | Accepted | 2026-09-16 |
 | [D-017](#d-017-xbrl-is-phase-5s-primary-input-document-reconciliation-stays-small-and-secondary) | XBRL is Phase 5's primary input; document reconciliation stays small and secondary | Accepted | 2026-09-16 |
 | [D-018](#d-018-tag-chains-declare-how-their-tags-relate-equity-is-split-by-scope) | Tag chains declare how their tags relate; equity is split by scope | Accepted | 2026-09-16 |
+| [D-019](#d-019-ratio-status-model-four-states-caveats-are-warnings) | Ratio status model: four states, caveats are warnings | Accepted | 2026-09-16 |
+| [D-020](#d-020-roaroe-use-ending-balances-not-average-balances-for-phase-6) | ROA/ROE use ending balances, not average balances, for Phase 6 | Accepted | 2026-09-16 |
+| [D-021](#d-021-phase-6-audit-structured-warnings-machine-readable-missingconflicting-concepts) | Phase 6 audit: structured warnings, machine-readable missing/conflicting concepts | Accepted | 2026-09-16 |
 
 ---
 
@@ -243,4 +246,47 @@ Table counts, by contrast, differ by 2.7× (10,437 vs 3,808 on the healthy cohor
 - **A full concept ontology** — unnecessary: three explicit policies covered every conflict observed.
 
 **Consequences.** Value/period accuracy 87.0% → 97.2%, with the 7 remaining mismatches all a documented ground-truth definition difference (`LongTermDebt` reference rows); `CONFLICTING` facts 50 → 3; `total_debt` completeness 25% → 86%, cross-checked against filers' own debt totals. The balance-sheet check's reported pass count falls from 19 to 12 because the circular ones are no longer counted — a more honest number, not a regression. Each concept's policy is now a reviewable claim about accounting meaning, so a wrong policy is a one-line, testable fix rather than a hidden resolver behaviour.
+
+## D-019 Ratio status model: four states, caveats are warnings
+**Status:** Accepted (delegated to engineering judgement, 2026-09-16) — detail in [ratios.md §3](ratios.md).
+
+**Context.** The Phase 6 brief (§9) lists up to six candidate ratio statuses (`CALCULATED`, `MISSING_INPUT`, `INVALID_DENOMINATOR`, `NOT_APPLICABLE`, `CONFLICTING_INPUT`, `LOW_CONFIDENCE`) and explicitly asks for "the minimum useful set" rather than all of them by default. Phase 5 already gives every input a `FactStatus` and a `Confidence`; a ratio status that duplicated those would be redundant, and one used to flag a caveat rather than a genuine inability to compute would blur "could this be calculated" with "should you look closer at it."
+
+**Decision.** `RatioStatus` has four states: `CALCULATED`, `MISSING_INPUT`, `INVALID_DENOMINATOR`, `CONFLICTING_INPUT`. Everything else the brief's six-state list would flag — a derived input, a low-confidence input, a manually corrected input, a negative-but-legitimate equity denominator, a near-zero interest-expense denominator — is a `warnings` entry on an otherwise `CALCULATED` result, not a fifth or sixth status. When more than one required input has a problem, priority is `CONFLICTING_INPUT` > `MISSING_INPUT` > a bad denominator: a conflicting value is stronger evidence of a real number than an absent one, so it is reported first.
+
+**Alternatives.**
+- **Six states matching the brief's full list verbatim** — rejected: `NOT_APPLICABLE` has no case Phase 5's own model doesn't already collapse into "no value" (canonical_schema.md §16 explicitly treats an absent statement and an unresolved line the same way), and `LOW_CONFIDENCE`/`REQUIRES_REVIEW` would either duplicate `CanonicalFact.confidence` or sit unused, exactly like Phase 5's own `REQUIRES_REVIEW` (canonical_schema.md §6, "not yet raised").
+- **Encode every caveat as its own status** (e.g. a `CALCULATED_FROM_DERIVED_INPUT` status) — rejected: it would make the status enum grow with every new caveat type discovered, and a caller filtering on "is this a usable number" would still need to special-case most of them back to "yes."
+
+**Consequences.** A caller can branch on exactly four values to know whether a value exists, and separately inspect `warnings` (a list, so it composes — a ratio can carry more than one) to know whether to trust it fully. Tested in `tests/test_ratios_engine.py` (`test_conflicting_input_takes_priority_over_missing`, the low-confidence/derived/manually-corrected warning tests, the negative-equity tests).
+
+## D-020 ROA/ROE use ending balances, not average balances, for Phase 6
+**Status:** Accepted (delegated to engineering judgement, confirmed with the user during the Phase 6 design review, 2026-09-16) — detail in [ratios.md §4](ratios.md).
+
+**Context.** The phase brief (§15) explicitly asks for a deliberate, documented choice between ending-balance ROA/ROE (simpler, always computable from one period) and average-balance ROA/ROE (more rigorous, needs the prior period's balance sheet to also have resolved). Phase 5's `companyfacts`-derived comparatives usually do carry a prior year, so average balances are technically available most of the time — the question was whether the added correctness was worth the added coupling.
+
+**Decision.** Phase 6 ships ending-balance ROA/ROE only. Every ratio in the catalog, including these two, is a pure function of one period's own resolved facts — no ratio depends on another period's data. Average-balance ROA/ROE is deferred, not rejected: `ratios.md §7` names it as a future *additive* `RatioDefinition` (`roa_avg`, `roe_avg`), never a change to the existing ones' meaning.
+
+**Alternatives.**
+- **Average balances when the prior year resolved, silently falling back to ending balances otherwise** — rejected: two periods' worth of data quietly producing two different formulas under one `ratio_id` is exactly the kind of hidden behaviour §31/§34 warn against ("no hidden magic"), and it would couple a period's `RatioResult` to a second period's `CanonicalFact`s, complicating provenance (which period's facts does a `roa` result actually reference?) for a benefit — removing one year's balance-sheet timing noise — that is real but secondary for an MVP.
+- **Average balances only, `MISSING_INPUT` when there is no prior year** — rejected: it would make ROA/ROE unavailable for a filer's very first monitored year purely as an artefact of this choice, not a real data gap.
+
+**Consequences.** Every `RatioResult` — not only ROA/ROE — has the same guarantee: it was computed entirely from the named `period_label`'s own facts. `docs/ratios.md §4` states the simplification explicitly so it is never mistaken for a rigorous average-balance figure. QM-02 measured ROA/ROE at 12/12 primary-period coverage on the golden set (`docs/ratios.md §6`) — the ending-balance choice costs nothing in coverage on this corpus, since `total_assets`/`shareholders_equity` are themselves near-universally complete.
+
+## D-021 Phase 6 audit: structured warnings, machine-readable missing/conflicting concepts
+**Status:** Accepted (delegated to engineering judgement, Phase 6 audit, 2026-09-16) — detail in [ratios.md §8](ratios.md).
+
+**Context.** Before starting Phase 7, a deep audit of Phase 6 inspected every ratio's formula, inputs, and edge-case handling, and stress-tested the engine against the real 12-filing corpus including its most distressed filers (SandRidge, Peabody, iHeartMedia, Frontier, Expand Energy). The audit found no formula errors, no accounting-semantic errors, and no circularity — but found that `RatioResult.warnings` being plain strings (D-019's original design) was a real gap: `total_debt` and `ebit` have no direct XBRL tag at all (`concept_map.py`), so they resolve as `DERIVED` for nearly every filer, meaning a majority of `CALCULATED` real-corpus results already carry at least one warning. A downstream consumer (Phase 7) would have to substring-match English sentences to tell "routine derivation" apart from "negative equity" or "near-zero denominator" — exactly the fragility structured data is supposed to avoid.
+
+**Decision.**
+- `RatioResult.warnings` becomes `tuple[RatioWarning, ...]`, where `RatioWarning = {code: WarningCode, concept: str, message: str}`. Five codes, one per caveat the engine actually raises: `NEGATIVE_EQUITY`, `NEAR_ZERO_DENOMINATOR`, `DERIVED_INPUT`, `LOW_CONFIDENCE_INPUT`, `MANUAL_INPUT`. `message` keeps the exact human-readable text `explain()` already printed, so nothing is lost.
+- `RatioResult.missing_concepts` and `.conflicting_concepts` are added as computed properties (empty unless the matching `RatioStatus` applies), giving machine-readable access to what `reason`'s prose already said, per the phase brief's own request (§13).
+- `RatioDefinition.calculation_method` / `RatioResult.calculation_method` is added (`"ending_balance"` on `roa`/`roe`, `None` on every other ratio), making D-020's MVP simplification part of the typed result, not only this decision log and `docs/ratios.md`.
+
+**Alternatives.**
+- **Leave `warnings` as strings, document the convention for substring-matching** — rejected: it is exactly the fragility (parsing prose to make decisions) the rest of this schema's design (`FactStatus`, `RatioStatus`, `Confidence`) deliberately avoids everywhere else.
+- **Generalize the near-zero-denominator warning to every ratio's denominator, not just `interest_coverage`'s** — investigated (checked all 362 `CALCULATED` real-corpus results for a near-zero-denominator artifact outside `interest_coverage`; found none — every extreme value traced to a real, materially-sized denominator and a genuinely extreme numerator, e.g. SandRidge's 2015 impairment). Deferred rather than implemented: there is no real-corpus evidence it is needed, and adding it speculatively would be exactly the "sounds sophisticated" complexity §34 warns against.
+- **A larger structured-warning taxonomy anticipating future caveats** — rejected: five codes cover every caveat this engine raises today; a new caveat gets a new code when it is actually implemented, not preemptively.
+
+**Consequences.** `scripts/evaluate_ratios.py` produces identical coverage numbers before and after (598 slots, 362 calculated, 0 conflicting, 0 invalid denominator) — this was a pure data-model change, no formula or status logic changed. 246/246 project tests pass (6 new/updated regression tests over the prior 244); 100% line coverage maintained on `ratios/`. This is a breaking change to `RatioResult.warnings`'s type, made deliberately now — before Phase 7 or any other consumer depends on the string form — rather than later, when it would be a harder migration.
 
