@@ -13,25 +13,77 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 4 of 20 — Document extraction (complete).**
-Phase 3 is complete: the training dataset is a self-built SEC XBRL +
-bankruptcy-records dataset ([D-013](docs/decision_log.md)), audited at full
-scale — 178 usable positive events, ~7,973-company candidate negative universe
-([data_dictionary.md](docs/data_dictionary.md)).
+**Phase 11 of 20 — Combined assessment (complete).** Phase 12 (the single
+grounded synthesis call) is next. See [roadmap.md](docs/roadmap.md) for the
+full phase table.
 
-Phase 4 adds the first pipeline layer: 10-K HTML and PDF extraction into
-located text, tables and item sections ([extraction.md](docs/extraction.md)),
-analyst upload validation (FR-04), and a golden evaluation set of filings with
-XBRL reference values ([golden_set.md](docs/golden_set.md)) so extraction
-accuracy (QM-01) becomes measurable. Turning extracted tables into canonical
-line items — and the QM-01 number itself — is Phase 5.
+The pipeline runs end to end, from SEC filings to a point-in-time risk estimate:
+
+```
+SEC companyfacts (XBRL, as filed)  ──┐
+                                     ├─→ canonical facts ─→ ratios ─→ health signals
+10-K HTML / uploaded PDF ─→ evidence ┘      (Phase 5)      (Phase 6)     (Phase 7)
+                                                                              │
+                        point-in-time features ─→ 365-day bankruptcy hazard ──┘
+                                     (Phase 8)      explained per prediction (Phase 9)
+
+10-K narrative sections ─→ risk signals with verbatim evidence (Phase 10)
+                                                                              │
+              all four layers ─→ one citable assessment, as of a chosen date ─┘
+                                 agreements, contradictions, no score (Phase 11)
+```
+
+- **Phase 3** — training dataset selected and audited at full scale: a
+  self-built SEC XBRL + bankruptcy-records join ([D-013](docs/decision_log.md)),
+  178 usable positive events, ~7,973-company candidate negative universe
+  ([data_dictionary.md](docs/data_dictionary.md)).
+- **Phase 4** — 10-K HTML and PDF extraction into located text, tables and item
+  sections ([extraction.md](docs/extraction.md)), analyst upload validation
+  (FR-04), and a 12-filing golden set with XBRL reference values
+  ([golden_set.md](docs/golden_set.md)).
+- **Phase 5** — canonical financial schema with provenance
+  ([canonical_schema.md](docs/canonical_schema.md)): 26 concepts, per-concept
+  tag policies and derivation rules. **QM-01: 97.2% value/period accuracy.**
+- **Phase 6** — 13-ratio deterministic engine ([ratios.md](docs/ratios.md))
+  with a four-state result model and structured warnings.
+- **Phase 7** — trend, dimension and early-warning analysis
+  ([financial_health.md](docs/financial_health.md)): 5 dimensions, 9 signal
+  codes, no composite score, and (from Phase 8) an explicit analysis window.
+- **Phase 8** — a leakage-checked point-in-time panel and a baseline
+  predictive layer ([predictive_model.md](docs/predictive_model.md)):
+  discrete-time bankruptcy hazard, walk-forward out-of-time evaluation,
+  heuristic baselines and a feature-family ablation.
+- **Phase 9** — explainability and trustworthiness
+  ([model_evaluation_explainability.md](docs/model_evaluation_explainability.md)):
+  a model-agnostic explanation layer that traces every contribution back to a
+  filing, plus the diagnostics that establish **how much of the model's
+  apparent performance is sampling design rather than credit risk** — enough
+  that the pooled metrics are not quotable as bankruptcy prediction.
+- **Phase 10** — narrative risk signals with verbatim evidence
+  ([nlp_risk_signals.md](docs/nlp_risk_signals.md)): 12 disclosure codes gated
+  on whether the filer is **stating** a condition or merely listing it as a
+  risk. Ungated, covenant language appears in 59% of the filings of companies
+  that did not fail and 60% of those that did — a lift of 1.02, no information
+  at all. Gated, it separates the cohorts 22% to 9%. **SC-03 holds on 2,355
+  quotes**, and every signal traces to one editable pattern.
+- **Phase 11** — the four layers combined into one addressable assessment
+  ([combined_assessment.md](docs/combined_assessment.md)): content-hashed
+  evidence IDs, seven contradiction rules and four corroboration rules, and an
+  as-of gate that enforces historical replay instead of documenting it. **The
+  headline result is negative:** at a matched alert budget, agreement between
+  all three layers is exactly as precise as the model's own top-k
+  (+0.000 [−0.082, +0.098]), so combining does not improve the ranking. What it
+  does deliver is what the synthesis and review phases need — 0 unresolved
+  citations, 0 quote mismatches, 202/202 point-in-time refusals — plus one
+  finding no single layer can produce: a filing that both **asserts and denies**
+  the same condition is 2.04× more likely to precede a bankruptcy.
 
 ## Environment setup
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```
-uv sync --extra dev --extra pdf   # dependencies + tests/lint/types + extraction
+uv sync --extra dev --extra pdf --extra ml   # deps + tests/lint/types + extraction + modelling
 cp .env.example .env              # then fill in SEC_USER_AGENT at minimum
 uv run pytest
 ```
@@ -52,9 +104,14 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Data dictionary](docs/data_dictionary.md) | Training dataset: unit of observation, label, features, provenance |
 | [Document extraction](docs/extraction.md) | Extraction design: provenance, the two paths, section detection, limits |
 | [Golden set](docs/golden_set.md) | Evaluation corpus, XBRL reference values, and the R-19 library measurement |
-| [Data dictionary](docs/data_dictionary.md) | Chosen training dataset: unit of observation, target, features, provenance |
+| [Canonical schema](docs/canonical_schema.md) | Canonical concepts, tag policies, derivation rules, provenance, QM-01 |
+| [Ratios](docs/ratios.md) | Ratio catalog, status model, warnings, M-2 coverage |
+| [Financial health](docs/financial_health.md) | Trend method, dimensions, signal catalog, thresholds, M-3 |
+| [Predictive model](docs/predictive_model.md) | Target, point-in-time contract, features, evaluation, results, limitations |
+| [Model evaluation & explainability](docs/model_evaluation_explainability.md) | Explanation layer, global/local drivers, cohort confounding, missingness, stability, errors |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
+| [Architecture audit](docs/architecture_audit.md) | Build-vs-buy / open-source audit of Phases 1–7 and Phase 8 readiness |
 | [Roadmap](docs/roadmap.md) | Phase plan and status |
 
 ## Core principles

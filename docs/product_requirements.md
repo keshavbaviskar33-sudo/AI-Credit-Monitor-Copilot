@@ -224,6 +224,21 @@ performance figure is claimed before it is measured).
 
 ### 10.2 Quality metrics (measured, reported honestly)
 
+> **Two namespaces, deliberately separate.** `QM-nn` below is the
+> **pre-registered** list: the metrics this product committed to before any of
+> them was measured, so that a later phase cannot quietly redefine what it
+> promised to report. Phases also produce their own **phase-local**
+> measurements, which are numbered `M-n` (for example `M-2` ratio coverage in
+> [ratios.md](ratios.md), `M-3` health-engine coverage in
+> [financial_health.md](financial_health.md), `M-4` the multi-filing
+> point-in-time path). Those are not listed here because they were not promised
+> in advance; they exist because a phase found something worth measuring.
+>
+> The split was introduced in Phase 10 after the two namespaces collided: the
+> phase docs had numbered their own metrics sequentially from `QM-01`, so
+> `QM-04` meant "the multi-filing path" in Phase 8 and "NLP precision and
+> recall" here — two different metrics, one identifier, in one repository.
+
 | ID | Metric | Target-setting approach | Phase |
 |---|---|---|---|
 | QM-01 | Field-level extraction accuracy on a golden set of 10-K financial statements (PDF vs. XBRL reference) | Baseline first; initial aspiration ≥ 95% on core fields for text-based PDFs, to be confirmed | 4–5 |
