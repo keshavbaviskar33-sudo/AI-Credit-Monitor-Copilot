@@ -13,9 +13,9 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 11 of 20 — Combined assessment (complete).** Phase 12 (the single
-grounded synthesis call) is next. See [roadmap.md](docs/roadmap.md) for the
-full phase table.
+**Phase 12 of 20 — Grounded synthesis (complete).** Phase 13 (human analyst
+review with append-only persistence) is next. See
+[roadmap.md](docs/roadmap.md) for the full phase table.
 
 The pipeline runs end to end, from SEC filings to a point-in-time risk estimate:
 
@@ -31,6 +31,9 @@ SEC companyfacts (XBRL, as filed)  ──┐
                                                                               │
               all four layers ─→ one citable assessment, as of a chosen date ─┘
                                  agreements, contradictions, no score (Phase 11)
+                                                    │
+                          one grounded LLM call ─→ draft note, every claim
+                          checked against its evidence by code (Phase 12)
 ```
 
 - **Phase 3** — training dataset selected and audited at full scale: a
@@ -77,6 +80,15 @@ SEC companyfacts (XBRL, as filed)  ──┐
   citations, 0 quote mismatches, 202/202 point-in-time refusals — plus one
   finding no single layer can produce: a filing that both **asserts and denies**
   the same condition is 2.04× more likely to precede a bankruptcy.
+- **Phase 12** — one grounded LLM call, and the code that checks it
+  ([grounded_synthesis.md](docs/grounded_synthesis.md)). The draft is not the
+  deliverable, the **verdict on the draft** is: eight checks catch a fabricated
+  evidence ID, a number that appears nowhere in the evidence, a reworded
+  quotation, a smuggled probability of default, and a draft that quietly omits
+  a disagreement. Measured by breaking 176 real drafts on purpose: **0.000
+  false-positive rate and 100% detection across all seven fault classes.** No
+  live call has been made — this environment has no API key — so the real-model
+  acceptance rate is unknown and said to be unknown.
 
 ## Environment setup
 
@@ -109,6 +121,9 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Financial health](docs/financial_health.md) | Trend method, dimensions, signal catalog, thresholds, M-3 |
 | [Predictive model](docs/predictive_model.md) | Target, point-in-time contract, features, evaluation, results, limitations |
 | [Model evaluation & explainability](docs/model_evaluation_explainability.md) | Explanation layer, global/local drivers, cohort confounding, missingness, stability, errors |
+| [Narrative risk signals](docs/nlp_risk_signals.md) | Signal catalog, the assertion gate, SC-03, QM-04 precision |
+| [Combined assessment](docs/combined_assessment.md) | Evidence register, contradiction and corroboration rules, the as-of gate, matched-budget results |
+| [Grounded synthesis](docs/grounded_synthesis.md) | Claim schema, the eight grounding checks, fault-injection results, what is not measured |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
 | [Architecture audit](docs/architecture_audit.md) | Build-vs-buy / open-source audit of Phases 1–7 and Phase 8 readiness |

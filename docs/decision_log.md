@@ -47,6 +47,10 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-037](#d-037-evidence-is-content-addressed-and-identity-is-a-separate-key) | Evidence is content-addressed, and identity is a separate key | Accepted | 2026-09-19 |
 | [D-038](#d-038-disagreement-is-an-output-and-no-rule-adjudicates-it) | Disagreement is an output, and no rule adjudicates it | Accepted | 2026-09-19 |
 | [D-039](#d-039-the-as-of-gate-runs-over-assembled-evidence-and-fails-closed) | The as-of gate runs over assembled evidence, and fails closed | Accepted | 2026-09-19 |
+| [D-040](#d-040-the-synthesis-deliverable-is-the-verdict-on-the-draft-not-the-draft) | The synthesis deliverable is the verdict on the draft, not the draft | Accepted | 2026-09-19 |
+| [D-041](#d-041-a-numbers-precision-comes-from-the-claim-not-from-a-tolerance-constant) | A number's precision comes from the claim, not from a tolerance constant | Accepted | 2026-09-19 |
+| [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned) | One call, no repair loop, and a rejected draft is returned | Accepted | 2026-09-19 |
+| [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) | The model provider lives behind one seam, and the phase is measured without it | Accepted | 2026-09-19 |
 
 ---
 
@@ -723,3 +727,105 @@ This is also why `assemble_assessment` requires a `FilingStamp` whenever a healt
 - **Admit undated evidence with a caveat.** Rejected: a caveat on an item that might be from the future is not a point-in-time guarantee, it is a note attached to the absence of one.
 
 **Consequences.** FR-05 is a guarantee rather than a convention, and every stored assessment is auditable after the fact. A new evidence kind must carry its filing date to pass the gate, which is the requirement rather than an inconvenience.
+
+## D-040 The synthesis deliverable is the verdict on the draft, not the draft
+**Status:** Accepted (delegated to engineering judgement, Phase 12, 2026-09-19) — implementation in `synthesis/validator.py`, measurement in [grounded_synthesis.md §5](grounded_synthesis.md).
+
+**Context.** FR-16 asks for one grounded LLM call producing a structured draft; FR-17 asks that claims citing non-existent evidence IDs, or containing numbers not present in the evidence, are detected by code. Read as a build order, that is "write the call, then add validation".
+
+**Decision.** The order is reversed and the emphasis with it. The call is four lines in `engine.py`; the validator is the largest module in the package, imports no provider SDK, needs no network, and is what the phase is measured on. An LLM writes the sentences and is not trusted to have written true ones.
+
+The reason is that this is the one place in the pipeline where everything underneath can be silently undone. A paraphrased quotation destroys Phase 10's SC-03. A percentile rounded into a different number destroys Phase 9's provenance chain. "A 72% probability of default" destroys [D-010](#d-010-ml-output-is-not-called-a-probability-of-default). None of those failures is visible in the output — they all read as fluent prose — so the only defence is a check that runs on every draft and does not depend on the prose being reasonable.
+
+**Two consequences shaped the schema.**
+
+- **The draft is a list of typed claims, not a paragraph.** A paragraph cannot be validated: three assertions resting on different evidence share one citation list, which attaches to none of them in particular. Each `Claim` carries its own `evidence_ids` and is checked alone.
+- **Claim kinds are required rather than inferred.** Two of the eight checks are about *completeness* — did the draft describe a contradiction, did it declare an absent layer — and code can ask that only if attempting one is a typed thing rather than a stylistic one.
+
+**Measured by fault injection, because that is the only honest way to measure a validator.** A live model returns whatever it produced that day: if it behaves you learn nothing about what the validator catches. So a reference draft is built for each of 176 assessments — grounded by construction, and deliberately doing what breaks a naive validator — then broken in seven named ways.
+
+| | Result |
+|---|---|
+| **False positives** (correct drafts rejected) | **0 of 176 — 0.000** |
+| `fabricated_citation`, `dropped_citation`, `reworded_quote`, `probability_claim`, `omitted_contradiction`, `miscited_number` | **100% detected** |
+| `fabricated_number` | 100% detected; 99.4% as a rejection, 1 of 176 downgraded to a flag by colliding with a different real value |
+
+**The false-positive rate was not zero on the first run, and the defect is the record's point.** A correct draft for *21st Century Oncology Holdings, Inc.* was rejected because the `21` in the company's own name parsed as an unsupported numeric assertion. Identity — name, CIK, as-of date, fiscal period — is not measurement, and now grounds every claim. The fix widened what counts as identity, not what counts as grounded, and the regression test asserts a genuinely absent number in the same sentence is still caught.
+
+**Alternatives.**
+- **Ask a second LLM to check the first.** Rejected: it reintroduces exactly the ungrounded step the phase exists to remove, doubles the cost NFR, and produces a check that cannot be audited line by line or regression-tested.
+- **Validate a prose draft with heuristics over sentences.** Rejected: sentence splitting is the least reliable part of the pipeline (Phase 10 built a segmenter and measured its limits), and a validator whose first step can fail is a validator that reports on itself.
+- **Trust the system prompt.** Rejected, though the prompt states every rule anyway: an instruction makes a compliant draft likely and a validator makes a non-compliant one *detected*. Neither substitutes for the other.
+
+**Consequences.** Phase 13 receives a `SynthesisResult` carrying the draft, the verdict and every finding, and must render rejections and flags differently. The validator's largest hole is stated rather than patched: it does not check whether a claim is *true* given its evidence — "leverage is improving" citing a deteriorating-leverage item passes every check. The only tools for that judgement are another model or the analyst, and [D-003](#d-003-analyst-owns-every-final-judgement) already assigns it to the analyst.
+
+## D-041 A number's precision comes from the claim, not from a tolerance constant
+**Status:** Accepted (delegated to engineering judgement, Phase 12, 2026-09-19) — implementation in `synthesis/numbers.py`; sensitivity measured in [grounded_synthesis.md §5.3](grounded_synthesis.md).
+
+**Context.** FR-17's "numbers not present in the evidence" reads like a set membership test and is not one. The evidence holds `97.8312`; a competent draft writes "the 97.8th percentile". Exact matching rejects every correct draft. A fixed epsilon either rejects honest rounding or accepts a fabrication that lands nearby, and its value would be arbitrary.
+
+**Decision.** The admissible gap is **half a unit in the last place the writer chose to state**. A number written to one decimal is checked to one decimal: `97.8` matches `97.8312` and `97.9` does not. `37` matches `37.4` and not `37.6`. `$199.5 million` admits fifty thousand either way, because that is what stating a figure to the hundred-thousand means. No epsilon constant appears anywhere in the module.
+
+Three supporting rules, each present because a real draft needs it:
+
+- **Every reading of a literal is tried, but no value is invented.** `22%` is `22.0` against a percentile field and `0.22` against a rate; `$199.5 million` is `199,500,000` raw and `199.5` in a field already denominated in millions. The layer cannot know which the evidence used, so it offers both scales — never a different magnitude.
+- **An unsigned literal carries its sign in the verb.** "fell 0.31" restates a stored `-0.31` correctly. This is the module's **one deliberate permissiveness** and is documented as such: it also grounds "the change was 0.31" against `-0.31`. Rejecting it would fail on ordinary correct prose; the magnitude still has to be real.
+- **What the evidence writes as text is quotable as text.** `FY2014`, an accession, "3 of 4 ratios" — facts the summaries state in words that no float records. Checked as strings, so the numeric rule never loosens to reach them. Evidence IDs are masked instead of checked, so a fabricated figure cannot be grounded on the coincidence of an ID's hex tail.
+
+**The boundary was measured, not asserted.** Perturbing a stated number by *k* units in its last stated place, over 176 assessments:
+
+| k | 0.2 | 0.4 | 0.6 | 1.0 | 2.0 | 10.0 |
+|---|---:|---:|---:|---:|---:|---:|
+| passed | 100% | 100% | — | — | — | — |
+| detected | — | — | **100%** | **100%** | **100%** | **100%** |
+
+Nothing below half a unit is flagged; everything above it is. The rule does what it claims, at the point it claims.
+
+**Alternatives.**
+- **A relative tolerance (1%, 0.1%).** Rejected: it is a number nobody can justify, and it behaves differently on a current ratio of 1.42 than on a percentile of 97.8 for no reason connected to what either means.
+- **Require the draft to restate values at full stored precision.** Rejected: it would produce "the 97.8312th percentile", which is false precision of exactly the kind [D-033](#d-033-the-model-output-is-a-ranking-and-the-schema-says-so) removed, and it would make the prose unreadable.
+- **Strip numbers from the draft entirely and render them from evidence.** Rejected: it solves grounding by removing the synthesis, and an analyst reading a note wants the figure in the sentence.
+
+**Consequences.** `EvidenceItem.numbers` — added in Phase 11 for this — is the input, and its four-significant-figure formatting in summaries is compatible with the rule rather than in tension with it. The known collision effect is reported rather than hidden: with ~30 evidence items per assessment, a fabricated value can land on a *different* real one (1 of 176 measured) and is then caught as a mis-citation rather than a fabrication.
+
+## D-042 One call, no repair loop, and a rejected draft is returned
+**Status:** Accepted (delegated to engineering judgement, Phase 12, 2026-09-19) — implementation in `synthesis/engine.py` and `synthesis/client.py`.
+
+**Context.** FR-16 allows one grounded call and the cost NFR is one call per assessment. The obvious product improvement is to regenerate when the validator rejects — the model gets the findings and tries again, and the analyst sees a better draft.
+
+**Decision.** `synthesize` makes exactly one call and returns the draft together with its verdict, including when the verdict is a rejection. No retry, no repair loop, no fallback to a cheaper model. `AnthropicSynthesisClient` additionally sets `max_retries=0`, because the SDK's automatic retries would turn one logical call into several billed ones while the accounting still said one.
+
+The reason is not only cost. **A repair loop hides the rejection rate**, and the rejection rate is the number Phase 13's reviewer needs in order to calibrate how much to trust the drafts that passed. A draft that reaches an analyst because the model was asked three times is a draft whose reliability nobody can state. A caller that wants to regenerate may call again, and will be able to see that it did.
+
+Three smaller decisions follow the same logic:
+
+- **Malformed output fails loudly.** `output_config.format` constrains the response to the draft schema, so a parse failure is a real breakage — a provider change, a truncation — and is raised rather than repaired. A best-effort salvage would produce a partial draft that gets validated, possibly accepted, and stored as though the model had written it.
+- **`stop_reason` is checked before `content` is read.** A refusal returns HTTP 200 with no usable text; indexing the content first would raise something unrelated to what actually happened.
+- **`api_calls` is a field on the result, asserted by a test.** A regression that adds a second call is then visible rather than invisible.
+
+**Alternatives.**
+- **Regenerate once on rejection.** Rejected on the visibility argument above, and because it doubles the worst-case cost precisely on the assessments where the model is least reliable.
+- **Return only accepted drafts and raise on rejection.** Rejected: the rejected draft and its findings are the most informative artefact the phase produces, and discarding it would make the failure mode unmeasurable.
+- **Absorb rate limits with SDK retries.** Rejected: the failure becomes invisible and the cost becomes untrue. The caller is in a better position to decide whether to wait.
+
+**Consequences.** Measured prompt size is 7,798 characters (~1,950 estimated tokens; no tokenizer is available offline, and the assumption is labelled wherever the figure appears), giving roughly **$0.040 per assessment** at Claude Opus 5 list price. The live acceptance rate is not yet known — see [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it).
+
+## D-043 The model provider lives behind one seam, and the phase is measured without it
+**Status:** Accepted (delegated to engineering judgement, Phase 12, 2026-09-19) — implementation in `synthesis/client.py`; `anthropic` is the optional `llm` extra.
+
+**Context.** [Q3](product_requirements.md) left "LLM provider and budget" to Phase 12. The environment this phase was built in has no `anthropic` package, no `ANTHROPIC_API_KEY` and no CLI credential, so no live call could be made.
+
+**Decision.** The provider is confined to `client.py`, behind a `SynthesisClient` protocol with three implementations — the live Anthropic client, a `ScriptedClient` for tests and measurement, and a `RecordingClient` that keeps a live run for free re-analysis. Nothing else in `synthesis/` imports a provider SDK, and `anthropic` is an optional extra.
+
+That is not provider-neutrality as a virtue. It is what made the phase measurable at all: the validator — the deliverable, per [D-040](#d-040-the-synthesis-deliverable-is-the-verdict-on-the-draft-not-the-draft) — is exercised over 176 real assessments with no key, no network, and no dependence on what a model happened to do on the day. A project whose test suite cannot run without a paid API key is a project whose test suite stops being run.
+
+**The gap is recorded rather than papered over.** The number Phase 13 will most want — *how often does a real model produce a draft that passes?* — does not exist yet, and no document in this project implies it does. [A-16](assumptions.md) ("a single structured LLM call can produce a grounded synthesis when given evidence with IDs") **remains open**, with the validator and the live script both in place, so the measurement is one command and one key away. `scripts/phase12_synthesize.py` writes every draft, verdict and usage figure to disk so a later change to the validator can be re-measured against the same drafts without paying twice.
+
+Model choice, when the key exists: **`claude-opus-5`**, with the response constrained by JSON Schema and a cache breakpoint on the stable system prefix. Whether that prefix clears the model's minimum cacheable length is **not claimed** — the result records `cache_read_input_tokens` and the live script reports what was actually measured.
+
+**Alternatives.**
+- **Block the phase until a key is available.** Rejected: it would have left the validator unwritten and unmeasured, which is the part that does not depend on a provider and the part everything downstream rests on.
+- **Stub the model with a deterministic generator and call it done.** Rejected as the more tempting error. A deterministic "synthesizer" would be a second, competing implementation of the phase, and measuring the validator against its own generator would be circular. The reference drafts in the measurement script are explicitly *test fixtures* and live in `scripts/`, never in the package.
+- **Write provider-agnostic code against a generic LLM interface.** Rejected: an abstraction over providers that have never both been used is an abstraction fitted to one of them anyway. One seam, one implementation, and a protocol narrow enough to add a second later.
+
+**Consequences.** `pyproject.toml` gains an `llm` extra. The 712-test suite runs with no credentials. [A-16](assumptions.md) stays open and says why. Phase 13 may assume a `SynthesisResult` exists but may not assume it was accepted.

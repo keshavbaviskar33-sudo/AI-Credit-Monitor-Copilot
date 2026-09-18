@@ -268,6 +268,6 @@ Full register: [risks.md](risks.md). The most consequential for product design:
 |---|---|---|
 | Q1 | Which training dataset and target definition? (candidates and decision gate in [data_feasibility.md](data_feasibility.md)) | Phase 3 |
 | ~~Q2~~ | ~~Approve proposed decisions D-004 – D-011?~~ Resolved 2026-09-13: all accepted | — |
-| Q3 | LLM provider and budget | Phase 12 |
+| Q3 | LLM provider and budget | **Resolved (Phase 12):** Claude Opus 5 via the Anthropic SDK, confined to `synthesis/client.py` behind a protocol ([D-043](decision_log.md)); one call per assessment, no retries, ~$0.040 per assessment estimated at list price ([D-042](decision_log.md)). `anthropic` is the optional `llm` extra so the test suite runs without credentials |
 | Q4 | ~~UI framework (Streamlit vs. API + web frontend)~~ Resolved 2026-09-14: Streamlit for Phases 2-14 ([D-012](decision_log.md)); revisit at Phase 14 | Phase 2 (initial), Phase 14 (final) |
 | Q5 | Which industries to support after MVP, and what benchmark data exists for industry-aware thresholds | Phase 7+ |
