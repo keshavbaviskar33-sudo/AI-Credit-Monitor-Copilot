@@ -13,8 +13,9 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 12 of 20 — Grounded synthesis (complete).** Phase 13 (human analyst
-review with append-only persistence) is next. See
+**Phase 13 of 20 — Analyst review & append-only persistence (complete).**
+Three phases remain — the UI, a measurement-debt pass and documentation
+([D-045](docs/decision_log.md) merged or cut the other four). See
 [roadmap.md](docs/roadmap.md) for the full phase table.
 
 The pipeline runs end to end, from SEC filings to a point-in-time risk estimate:
@@ -92,6 +93,16 @@ SEC companyfacts (XBRL, as filed)  ──┐
   exactly, then silently dropped the word *our* from inside the quotation, in a
   draft that otherwise reads as clean and well-sourced. Caught mechanically, on
   the first live batch. Twelve drafts is a small sample and is reported as one.
+- **Phase 13** — the analyst review layer and the audit store
+  ([review_and_persistence.md](docs/review_and_persistence.md)), where "the
+  analyst owns every final judgement" stops being a principle and becomes a
+  schema. **Append-only is enforced by the database**, not by convention:
+  `BEFORE UPDATE`/`BEFORE DELETE` triggers abort on every table, and the tests
+  attack the raw connection. Supersession is *derived* — the one lifecycle
+  state that looks like it needs a column is the one that proves it cannot
+  have one. Verified on the full corpus: 202 assessments, **0 round-trip
+  mismatches**, **6 of 6 edit attempts refused**, 39 superseded entries with
+  their reviews intact.
 
 ## Environment setup
 
@@ -127,6 +138,7 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Narrative risk signals](docs/nlp_risk_signals.md) | Signal catalog, the assertion gate, SC-03, QM-04 precision |
 | [Combined assessment](docs/combined_assessment.md) | Evidence register, contradiction and corroboration rules, the as-of gate, matched-budget results |
 | [Grounded synthesis](docs/grounded_synthesis.md) | Claim schema, the eight grounding checks, fault-injection results, what is not measured |
+| [Review & persistence](docs/review_and_persistence.md) | Review schema, append-only guarantees, derived lifecycle state, corpus verification |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
 | [Architecture audit](docs/architecture_audit.md) | Build-vs-buy / open-source audit of Phases 1–7 and Phase 8 readiness |

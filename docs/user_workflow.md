@@ -104,7 +104,7 @@ Then: **review decision** (§6).
 
 **Terminology is deliberately distinct:**
 - *Draft risk level* — produced by the AI synthesis; always labelled "AI draft".
-- *Credit watch status* — set only by the analyst (initial proposal: `stable` · `monitor` · `watchlist` · `escalate`; final vocabulary to be confirmed in Phase 13).
+- *Credit watch status* — set only by the analyst (`stable` · `monitor` · `watchlist` · `escalate` — **confirmed in Phase 13** ([D-049](decision_log.md)): each term names what the analyst will do next, not how bad the company is).
 
 ## 6. Assessment lifecycle
 

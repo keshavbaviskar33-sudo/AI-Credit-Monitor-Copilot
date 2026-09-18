@@ -53,6 +53,10 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) | The model provider lives behind one seam, and the phase is measured without it | Accepted | 2026-09-19 |
 | [D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope) | A second provider, and the prompt leaves the vendor's envelope | Accepted | 2026-09-19 |
 | [D-045](#d-045-the-remaining-eight-phases-become-four) | The remaining eight phases become four | Accepted | 2026-09-19 |
+| [D-046](#d-046-append-only-is-a-property-of-the-database-not-a-convention) | Append-only is a property of the database, not a convention | Accepted | 2026-09-19 |
+| [D-047](#d-047-supersession-and-lifecycle-state-are-derived-never-stored) | Supersession and lifecycle state are derived, never stored | Accepted | 2026-09-19 |
+| [D-048](#d-048-stdlib-sqlite3-and-the-review-rules-live-in-the-type) | Stdlib `sqlite3`, and the review rules live in the type | Accepted | 2026-09-19 |
+| [D-049](#d-049-the-credit-watch-vocabulary-describes-action-not-severity) | The credit watch vocabulary describes action, not severity | Accepted | 2026-09-19 |
 
 ---
 
@@ -905,3 +909,87 @@ It cited the correct evidence item and reproduced 195 characters exactly before 
 - **Renumber the phases.** Rejected: every doc cross-references phases by number. Tidiness is not worth invalidating the references that make the history auditable.
 
 **Consequences.** Four phases remain: **13** (review and persistence), **14** (UI), **17** (measurement debts), **19** (documentation and write-up). The phase table keeps twenty rows so the plan's own history stays readable, and [D-009](#d-009-roadmap-amendments)'s convention — amend the roadmap, never silently rewrite it — is followed here as it was for every earlier amendment.
+
+## D-046 Append-only is a property of the database, not a convention
+**Status:** Accepted (delegated to engineering judgement, Phase 13, 2026-09-19) — implementation in `review/store.py`, verified in [review_and_persistence.md §6](review_and_persistence.md).
+
+**Context.** "History is append-only" has been core principle 6 since Phase 1. FR-19 requires the AI draft to be immutable and analyst edits stored separately, and `user_workflow.md` §6 requires that a recorded review can never be edited or deleted — corrections are new records. Until Phase 13 all of that was prose.
+
+**Decision.** Every table carries `BEFORE UPDATE` and `BEFORE DELETE` triggers that `RAISE(ABORT)`. There is no `update` method anywhere in the package, and there is no code path that needs one.
+
+The distinction is the whole design. A store that is append-only *by convention* is append-only until the first hurried afternoon: a caller who bypasses the module, a maintainer who forgets, a fix applied in a SQLite browser. A store whose `UPDATE` raises is append-only in a way an auditor can verify without reading any Python, and in a way that survives everyone who will ever touch it.
+
+**The tests attack the raw connection.** `ReviewStore.raw()` exists so the test suite can attempt a forbidden write directly, because a rule that can only be exercised through the module that provides it has not been tested. Six operations — `UPDATE` and `DELETE` on each of the three tables — are attempted against the full 202-assessment database in `phase13_audit.py`, and **all six are refused**.
+
+**A second line, because the first is not absolute.** The triggers protect rows, not the schema: somebody with file access can `DROP TRIGGER` and then edit. So every payload is stored with a content hash that is checked on every read, and the round-trip test does exactly that — drops the trigger, tampers, and asserts the read fails. The guarantee is against accident and convention-drift, not against an administrator with the file and a motive; that limit is stated rather than implied.
+
+**Alternatives.**
+- **Enforce it in the repository layer only.** Rejected: it protects the database from this module and from nothing else, which is the weaker half of the requirement.
+- **Soft-delete columns (`is_deleted`, `valid_to`).** Rejected: they require an `UPDATE` to set, so the mechanism for marking history as superseded would itself be the operation the principle forbids. See [D-047](#d-047-supersession-and-lifecycle-state-are-derived-never-stored).
+- **An event log with periodic snapshots.** Rejected as premature: the corpus is 202 assessments and 472 rows, the queries are sub-100 ms, and an event-sourcing layer would add machinery no measurement asks for.
+
+**Consequences.** Corrections are new rows pointing at what they correct; `AssessmentHistory.effective_review` resolves which one stands while every superseded review stays readable. `SCHEMA_VERSION` is checked on open and a mismatch raises rather than migrating, because an append-only audit store that silently rewrites itself to a new shape is a contradiction — conversion means exporting and re-recording, deliberately.
+
+## D-047 Supersession and lifecycle state are derived, never stored
+**Status:** Accepted (delegated to engineering judgement, Phase 13, 2026-09-19) — implementation in `review/store.py` and `review/models.py`.
+
+**Context.** `user_workflow.md` §6 gives the assessment lifecycle five states: Draft, Approved, Modified, Rejected, Superseded. The obvious schema has a `state` column.
+
+**Decision.** No state column. State is computed at read time.
+
+Four of the five states are the result of an action somebody took on *this* assessment, so they follow from its reviews. `SUPERSEDED` is different in kind: it is the result of an action taken about a **different** assessment — a newer filing arriving — and nobody performs it. Storing it would mean going back and updating a row that was already written, which is exactly what [D-046](#d-046-append-only-is-a-property-of-the-database-not-a-convention) forbids. The one state that most looks like it needs a column is the one that proves the column cannot exist.
+
+So: the latest assessment for a company is current, every earlier one is superseded, and a superseded assessment **keeps its review** — it is not an unreviewed assessment, it is a reviewed one that is no longer the latest.
+
+**The same reasoning covers the watch status.** `CreditWatchStatus` lives on the review, not on the assessment, so nothing in the pipeline can write it (FR-20). An unreviewed company's status is `None` rather than `STABLE`, because defaulting it would manufacture a judgement nobody made — which is the failure FR-20 exists to prevent, arriving as a default value.
+
+**Measured on the corpus.** Across 202 assessments over 163 companies, 36 of which have several filings: 109 `draft`, 19 `approved`, 19 `modified`, 16 `rejected`, **39 `superseded` — of which 14 retain a review**. That last number is the one worth checking, because losing a superseded assessment's review is the half of FR-22 that fails silently.
+
+**Alternatives.**
+- **A `state` column updated on transition.** Rejected: it requires the `UPDATE` that D-046 forbids, and it introduces a second source of truth that can disagree with the reviews.
+- **A `superseded_by` column written at insert time.** Rejected: at insert time the *newer* assessment does not know it supersedes anything, and the *older* one cannot be told without being updated.
+- **Materialise state in a view refreshed on write.** Rejected as the same thing with extra machinery: queries measured at 25–33 ms over the whole corpus, so there is nothing to optimise.
+
+**Consequences.** `history()` and `watchlist()` do the derivation, which is why the read path is where the lifecycle logic lives. Adding a sixth state means changing one function rather than migrating a column — which matters, because an append-only store has no migration path by design.
+
+## D-048 Stdlib `sqlite3`, and the review rules live in the type
+**Status:** Accepted (delegated to engineering judgement, Phase 13, 2026-09-19) — supersedes the SQLAlchemy `db` extra declared in Phase 2; implementation in `review/`.
+
+**Context.** `pyproject.toml` has carried a `db` extra with SQLAlchemy since Phase 2, added before any persistence existed. Phase 13 is where that choice becomes real. [A-18](assumptions.md) commits the project to a modular Python monolith with SQLite.
+
+**Decision, part 1 — stdlib `sqlite3`, and the `db` extra is removed.** Two reasons, both only visible once the schema existed.
+
+The schema is three tables with no polymorphism, no lazy loading and no relationship graph worth mapping; the payloads are JSON documents produced by pydantic models that already own their validation. An ORM over that adds a layer to read through and removes nothing. And the load-bearing part of this store is a set of SQL triggers, which are written as SQL either way.
+
+More decisively: `sqlite3` is in the standard library, so the persistence tests run in every environment with no optional extra installed. Phase 12 established that the test suite must not depend on an optional dependency ([D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it)); the argument applies at least as strongly to the layer that stores the audit trail. A test suite that skips the audit store when an extra is missing is a test suite that stops proving the audit store works.
+
+**Decision, part 2 — FR-18's rules are enforced in the type, not in a service layer.** `AnalystReview` cannot be constructed without a decision and a watch status, and a `modify` or `reject` without a comment raises at construction rather than at save. A validation in the storage layer protects the database; a validation in the type protects every code path that will ever build one, including the Phase 14 UI.
+
+Neither `decision` nor `watch_status` has a default. `user_workflow.md` §7 asks for "no default review action" as an anti-automation-bias measure, and a schema defaulting to `APPROVE` would hand the UI a pre-selected answer whatever the UI intended. Two further rules follow the same logic: `approve` does **not** require a comment, because demanding a justification for agreement is how you train people to write "ok" and a field full of "ok" is worse than an empty one; and an `approve` carrying `modified_text` is refused, because an ambiguous record surfaces months later in an audit rather than now.
+
+**Alternatives.**
+- **Keep SQLAlchemy because it was declared.** Rejected: a dependency chosen before the problem existed is a guess, and Phase 2 was explicit that phase-specific dependencies live in optional groups precisely so they can be revisited.
+- **Validate in `record_review`.** Rejected: it leaves every other constructor of an `AnalystReview` unguarded, and the UI is about to become one.
+- **Make `db` optional and skip the tests without it.** Rejected for the reason above — it is the audit trail.
+
+**Consequences.** `pyproject.toml` loses the `db` extra; nothing else changes, since it was never imported. The persistence tests run unconditionally. If a future phase needs a second backend, the seam is `ReviewStore`, and the SQL that carries the guarantees would have to be ported with it — which is a cost worth knowing about before it is paid.
+
+## D-049 The credit watch vocabulary describes action, not severity
+**Status:** Accepted (delegated to engineering judgement, Phase 13, 2026-09-19) — closes the open question in [user_workflow.md](user_workflow.md) §5.
+
+**Context.** `user_workflow.md` §5 proposed `stable · monitor · watchlist · escalate` for the analyst-set credit watch status and left the vocabulary "to be confirmed in Phase 13".
+
+**Decision.** Confirmed as proposed, unchanged.
+
+The reason is what the four terms are *about*. Each names what the analyst will do next — nothing, look again next filing, formally watchlist, escalate to a risk manager. None of them names how bad the company is.
+
+A severity vocabulary (`low`/`medium`/`high`, or a 1–5 scale) would be a composite risk score wearing words. This project has refused that number four times on the same grounds — [D-010](#d-010-ml-output-is-not-called-a-probability-of-default), [D-022](#d-022-phase-7-financial-health-design-economic-direction-no-composite-score-mixed-status), [D-033](#d-033-the-model-output-is-a-ranking-and-the-schema-says-so), [D-036](#d-036-phase-11-produces-an-evidence-package-not-a-combined-score) — and a severity label set by a human would be worse than one computed by a model, because it would look like a judgement while being just as uninspectable.
+
+There is a second, sharper problem. A severity scale invites comparison with the model's ranking: an analyst marking a company `high` while the model ranks it in the 30th percentile reads as a disagreement to reconcile. It is not one. They are different quantities measured different ways, and the product should not build a surface that implies otherwise. "Escalate" and "97th percentile" cannot be compared, which is the correct relationship.
+
+**Alternatives.**
+- **A severity scale.** Rejected above.
+- **Free-text status.** Rejected: it cannot be queried, cannot drive a watchlist, and would drift into a private vocabulary per analyst.
+- **Reuse the model's percentile bands as statuses.** Rejected outright: it would make the analyst's standing a function of the model's output, which inverts [D-003](#d-003-analyst-owns-every-final-judgement).
+
+**Consequences.** `CreditWatchStatus` is a closed enum on the review record, set only by an analyst action (FR-20). The watchlist is returned alphabetically rather than ordered by status, because there is no ordering over these four terms that is not a severity scale reintroduced as a sort key.

@@ -27,8 +27,9 @@ ml = ["scikit-learn>=1.5,<1.10", "shap>=0.46,<0.53"]
 pdf = ["pdfplumber>=0.11,<0.12", "pymupdf>=1.24,<1.29", "lxml>=5.3,<7"]
 # Phase 14 (proposed initial choice, see decision_log.md D-012): dashboard UI.
 ui = ["streamlit>=1.38,<1.64"]
-# Phase 13/15: append-only SQLite persistence.
-db = ["sqlalchemy>=2.0,<2.1"]
+# Phase 13's append-only store uses stdlib `sqlite3` (D-048), so the audit
+# trail's tests run with no optional extra installed. The SQLAlchemy `db`
+# extra declared here in Phase 2 was never imported and has been removed.
 # Phase 12: the single grounded synthesis call. Optional on purpose -- the
 # grounding validator is the phase's deliverable and is measured by fault
 # injection, so the test suite must run without an API key or this dependency.
