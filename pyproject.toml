@@ -32,7 +32,7 @@ db = ["sqlalchemy>=2.0,<2.1"]
 # Phase 12: the single grounded synthesis call. Optional on purpose -- the
 # grounding validator is the phase's deliverable and is measured by fault
 # injection, so the test suite must run without an API key or this dependency.
-llm = ["anthropic>=1.0,<2"]
+llm = ["anthropic>=1.0,<2", "google-genai>=1.0,<2"]
 # Engineering tooling: tests and linting, used from Phase 2 onward.
 dev = [
     "pytest>=8.3,<9",

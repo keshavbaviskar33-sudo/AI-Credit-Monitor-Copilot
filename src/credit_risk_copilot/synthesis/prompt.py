@@ -10,14 +10,12 @@ at". A non-deterministic prompt cannot be cached, cannot be diffed when a
 draft changes, and cannot be re-run to reproduce a stored draft, which Phase
 13 needs.
 
-**The instructions come before the evidence.** Prompt caching is a prefix
-match rendered `tools` -> `system` -> `messages`, so the stable part -- the
-rules, the schema, the vocabulary -- goes in `system` with a cache breakpoint
-and the per-company evidence goes in `messages` after it. Whether that prefix
-is long enough to actually cache is a property of the model's minimum
-cacheable prefix, not something this module can assert, so the result records
-`cache_read_input_tokens` and the phase doc reports what was measured instead
-of claiming a saving.
+**The instructions are separate from the evidence.** `SynthesisRequest`
+keeps the stable half (rules, schema, vocabulary) apart from the volatile half
+(one company's evidence), because prompt caching is a prefix match and a
+provider can only cache a prefix that is actually stable. Where the breakpoint
+goes is each client's business; that the two halves are separable is this
+module's.
 
 ## What the model is told it may not do
 
@@ -32,6 +30,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from credit_risk_copilot.assessment.models import Assessment, EvidenceItem
 
@@ -183,39 +182,66 @@ def evidence_pack(assessment: Assessment) -> str:
     return "\n".join(lines)
 
 
-def build_request(assessment: Assessment, *, model: str, max_tokens: int = 8000) -> dict:
-    """The complete Messages API request for one assessment.
+@dataclass(frozen=True)
+class SynthesisRequest:
+    """One assessment's prompt, in nobody's wire format.
 
-    Returned as a plain dict rather than issued, so the prompt can be
-    inspected, diffed and tested without an API key -- and so the one place
-    that talks to a provider stays in `client.py`.
+    The first version of this module returned an Anthropic Messages dict, on
+    the reasoning that there was one provider and an abstraction over one
+    implementation is fitted to it. Adding a second provider showed what that
+    cost: the *prompt* -- the instructions, the evidence, the output contract
+    -- is the thing this project owns and versions, and burying it in one
+    vendor's envelope made a stored draft's fingerprint vendor-flavoured
+    forever.
+
+    So the three things that are ours live here, and each client renders them
+    into its own request. `model` is deliberately absent: which model runs a
+    prompt is a property of the client, not of the prompt, and including it
+    would make two providers' fingerprints differ for an identical prompt.
     """
-    return {
-        "model": model,
-        "max_tokens": max_tokens,
-        "system": [
-            {
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                # The breakpoint sits on the stable instructions. Whether the
-                # prefix clears the model's minimum cacheable length is
-                # measured from `usage.cache_read_input_tokens`, never assumed.
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
-        "messages": [{"role": "user", "content": evidence_pack(assessment)}],
-        "output_config": {"format": {"type": "json_schema", "schema": RESPONSE_SCHEMA}},
-    }
+
+    system: str
+    user: str
+    #: JSON Schema the response must satisfy. Both providers accept standard
+    #: JSON Schema; neither is allowed to return prose.
+    schema: dict
+    max_tokens: int = 8000
 
 
-def request_fingerprint(assessment: Assessment, *, model: str) -> str:
-    """A stable digest of the exact request an assessment produces.
+def build_request(assessment: Assessment, *, max_tokens: int = 8000) -> SynthesisRequest:
+    """The prompt for one assessment, built but not issued.
 
-    Phase 13 stores a draft immutably; this is what lets a later reader confirm
-    the stored draft came from the prompt the stored assessment implies,
-    without keeping a second copy of the prompt.
+    Returned rather than sent so it can be inspected, diffed and tested
+    without an API key -- and so the only code that talks to a provider stays
+    in `client.py`.
+    """
+    return SynthesisRequest(
+        system=SYSTEM_PROMPT,
+        user=evidence_pack(assessment),
+        schema=RESPONSE_SCHEMA,
+        max_tokens=max_tokens,
+    )
+
+
+def request_fingerprint(assessment: Assessment) -> str:
+    """A stable digest of the prompt an assessment produces.
+
+    Phase 13 stores a draft immutably; this is what lets a later reader
+    confirm the stored draft came from the prompt the stored assessment
+    implies, without keeping a second copy of the prompt. Provider-independent,
+    so the same assessment fingerprints identically whichever model drafted it
+    -- which is what makes two providers' drafts comparable at all.
     """
     from hashlib import blake2s
 
-    payload = json.dumps(build_request(assessment, model=model), sort_keys=True)
+    request = build_request(assessment)
+    payload = json.dumps(
+        {
+            "system": request.system,
+            "user": request.user,
+            "schema": request.schema,
+            "max_tokens": request.max_tokens,
+        },
+        sort_keys=True,
+    )
     return blake2s(payload.encode("utf-8"), digest_size=8).hexdigest()

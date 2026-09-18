@@ -86,9 +86,12 @@ SEC companyfacts (XBRL, as filed)  ──┐
   evidence ID, a number that appears nowhere in the evidence, a reworded
   quotation, a smuggled probability of default, and a draft that quietly omits
   a disagreement. Measured by breaking 176 real drafts on purpose: **0.000
-  false-positive rate and 100% detection across all seven fault classes.** No
-  live call has been made — this environment has no API key — so the real-model
-  acceptance rate is unknown and said to be unknown.
+  false-positive rate and 100% detection across all seven fault classes.** Then
+  run against a real model: 12 drafts on `gemini-3.6-flash`, 11 accepted. **The
+  one rejection is the point** — the model reproduced 195 characters of a filing
+  exactly, then silently dropped the word *our* from inside the quotation, in a
+  draft that otherwise reads as clean and well-sourced. Caught mechanically, on
+  the first live batch. Twelve drafts is a small sample and is reported as one.
 
 ## Environment setup
 

@@ -16,17 +16,20 @@ SDK at all.
 
 from credit_risk_copilot.synthesis.client import (
     AnthropicSynthesisClient,
+    GeminiSynthesisClient,
     RecordingClient,
     ScriptedClient,
     SynthesisClient,
     SynthesisError,
     parse_draft,
+    render_anthropic,
 )
 from credit_risk_copilot.synthesis.engine import synthesize
 from credit_risk_copilot.synthesis.numbers import mentions, ungrounded
 from credit_risk_copilot.synthesis.prompt import (
     RESPONSE_SCHEMA,
     SYSTEM_PROMPT,
+    SynthesisRequest,
     build_request,
     evidence_pack,
     request_fingerprint,
@@ -50,6 +53,7 @@ __all__ = [
     "Claim",
     "ClaimKind",
     "DraftSynthesis",
+    "GeminiSynthesisClient",
     "FailureCode",
     "GroundingFinding",
     "RecordingClient",
@@ -57,12 +61,14 @@ __all__ = [
     "Severity",
     "SynthesisClient",
     "SynthesisError",
+    "SynthesisRequest",
     "SynthesisResult",
     "ValidationReport",
     "build_request",
     "evidence_pack",
     "mentions",
     "parse_draft",
+    "render_anthropic",
     "request_fingerprint",
     "synthesize",
     "ungrounded",

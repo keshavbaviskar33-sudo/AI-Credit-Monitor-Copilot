@@ -375,10 +375,9 @@ def main() -> None:
     frame = pd.DataFrame(rows)
     frame.to_csv(OUT_DIR / "grounding_faults.csv", index=False)
 
-    sample = build_request(assessments[0], model="claude-opus-5")
+    sample = build_request(assessments[0])
     (OUT_DIR / "example_prompt.txt").write_text(
-        sample["system"][0]["text"] + "\n\n" + "=" * 70 + "\n\n" + sample["messages"][0]["content"],
-        encoding="utf-8",
+        sample.system + "\n\n" + "=" * 70 + "\n\n" + sample.user, encoding="utf-8"
     )
 
     mean_chars = float(np.mean(prompt_chars)) if prompt_chars else 0.0

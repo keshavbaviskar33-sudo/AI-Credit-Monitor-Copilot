@@ -29,7 +29,7 @@ def synthesize(
     assessment: Assessment, client: SynthesisClient, *, max_tokens: int = 8000
 ) -> SynthesisResult:
     """Draft a monitoring note for one assessment and check it against its evidence."""
-    request = build_request(assessment, model=client.model, max_tokens=max_tokens)
+    request = build_request(assessment, max_tokens=max_tokens)
     draft, usage = client.complete(request)
     return SynthesisResult(
         cik=assessment.cik,

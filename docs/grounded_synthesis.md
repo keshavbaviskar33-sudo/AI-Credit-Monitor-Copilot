@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | Complete, with one part deliberately unmeasured — the validator is measured on 176 assessments; **no live LLM call has been made** (§8) |
+| **Status** | Complete — the validator is measured on 176 assessments by fault injection, and on **12 live drafts** from a real model (§8). The live sample is small and says so |
 | **Date** | 2026-09-19 |
-| **Decisions** | [D-040](decision_log.md) the verdict is the deliverable · [D-041](decision_log.md) precision comes from the claim · [D-042](decision_log.md) one call, no repair loop · [D-043](decision_log.md) the provider lives behind one seam |
+| **Decisions** | [D-040](decision_log.md) the verdict is the deliverable · [D-041](decision_log.md) precision comes from the claim · [D-042](decision_log.md) one call, no repair loop · [D-043](decision_log.md) the provider lives behind one seam · [D-044](decision_log.md) a second provider, and the prompt leaves the envelope |
 | **Code** | `src/credit_risk_copilot/synthesis/` |
 | **Scripts** | `phase12_grounding.py` (offline, measured) · `phase12_synthesize.py` (live, needs a key) |
-| **Requirements** | FR-16 (one grounded call) · FR-17 (citations and numbers checked by code) · cost NFR (one call per assessment) |
+| **Requirements** | FR-16 (one grounded call) · FR-17 (citations and numbers checked by code) · cost NFR (one call per assessment) · [A-16](assumptions.md) |
 | **Related** | [combined_assessment.md](combined_assessment.md) (the input) · [nlp_risk_signals.md](nlp_risk_signals.md) (SC-03) · [predictive_model.md](predictive_model.md) |
 
 > **The draft is not the deliverable; the verdict on the draft is.** An LLM
@@ -15,6 +15,9 @@
 > validator is the largest module in the package, imports no provider SDK, and
 > is measured against drafts that were broken on purpose — because a validator
 > checked only against output a model happened to produce has not been checked.
+>
+> It then caught a real one. On 12 live drafts, a current model silently
+> dropped a word from inside a quotation it was told to copy verbatim (§8.2).
 
 ---
 
@@ -227,40 +230,100 @@ would turn one logical call into several billed ones, and the NFR is one call
 per assessment; a rate-limit failure is surfaced to the caller, which can
 decide, rather than absorbed where the cost would be invisible.
 
-## 8. What is **not** measured, and why
+## 8. The live run
 
-**No live LLM call has been made.** This environment has no `anthropic`
-package, no `ANTHROPIC_API_KEY`, and no `ant` CLI credential. So the number
-Phase 13 will most want — *how often does a real model produce a draft that
-passes?* — does not exist yet, and nothing in this document implies it does.
+### 8.1 What was actually run
 
-That gap is why the phase was built in this order rather than being blocked on
-it. The validator is complete, measured, and runs offline; `phase12_synthesize.py`
-is the live path and produces the acceptance rate the moment a key exists.
-[A-16](assumptions.md) — "a single structured LLM call can produce a grounded
-synthesis when given evidence with IDs" — therefore **remains open**, and is
-recorded as open rather than quietly marked done.
+A second provider was added ([D-044](decision_log.md)) when a Gemini key became
+available, which is also what forced the prompt out of one vendor's envelope:
+`SynthesisRequest` now carries the instructions, the evidence and the output
+schema, and each client renders it into its own wire format.
 
-Other limitations:
+| | |
+|---|---|
+| Model | `gemini-3.6-flash` |
+| Assessments attempted | 120 |
+| Drafts returned | **12** |
+| Accepted by the validator | **11 — 91.7%** |
+| Findings | 1 × `non_verbatim_quote` |
+| Tokens | 35,334 in / 9,503 out; **0 cached** |
+| Failed calls | 108, all `429 RESOURCE_EXHAUSTED` (free-tier quota) |
 
-1. **The validator does not check whether a claim is *true* given its
+**The sample is 12 drafts and nothing here pretends otherwise.** A free-tier
+credential is rate-limited per minute and capped per day; the pro-tier models
+return a stated quota of zero, so the default model is the most capable one an
+ordinary key can reach. An acceptance rate from 12 drafts has a 95% interval
+running roughly from 62% to 100% — it establishes that the pipeline works
+end to end and that the validator fires on real output, and it does not
+establish a reliability figure.
+
+**Prompt caching did not engage.** `cached_content_token_count` was zero on
+every call. §6 declined to claim a saving; this is the measurement that would
+have supported one, and it does not.
+
+### 8.2 The one rejection, which is the most useful result in the phase
+
+`gemini-3.6-flash`, drafting for GT Advanced Technologies, wrote a quotation
+it was told to copy character for character:
+
+```text
+model:  ...could have a further adverse effect on     share price.
+filing: ...could have a further adverse effect on our share price.
+```
+
+It cited the **correct** evidence item, and its quote was an exact prefix of
+the stored sentence for 195 characters before dropping the word *our*. Nothing
+about the draft looks wrong; it reads as a clean, well-sourced note. This is
+precisely the failure [D-040](decision_log.md) argues is invisible without a
+mechanical check — Phase 10's SC-03 guarantees the stored quote is verbatim
+from the filing, and one word silently removed downstream would have carried a
+misquotation into a stored, analyst-facing draft.
+
+The validator caught it, on the first live batch, at n=12.
+
+### 8.3 What is still not measured
+
+1. **A second provider has not been run.** The Anthropic path is written and
+   tested but has never made a call — no key. Two models on the same
+   assessments, which the provider-neutral prompt now makes directly
+   comparable, is the obvious next measurement.
+2. **The validator does not check whether a claim is *true* given its
    evidence.** "Leverage is improving" citing a deteriorating-leverage item
    resolves, carries no numbers, quotes nothing, and passes. The only tools for
    that judgement are another model — the ungrounded step this phase exists to
-   avoid — or the analyst, who has it by design ([D-003](decision_log.md)).
-   This is the single largest hole and it is deliberate.
-2. **The forbidden-conclusion check is a phrase list.** Five patterns, readable
+   avoid — or the analyst, who has it by design
+   ([D-003](decision_log.md)). This is the single largest hole and it is
+   deliberate.
+3. **The forbidden-conclusion check is a phrase list.** Five patterns, readable
    line by line, each anchored on the assertion rather than the vocabulary so
    the *required* caveat ("the score is not a probability of default") passes.
    A model determined to smuggle a conclusion past it in other words will
    succeed; the check is a floor, not a ceiling.
-3. **Completeness is checked by presence, not by coverage.** A draft describing
+4. **Completeness is checked by presence, not by coverage.** A draft describing
    two of three disagreements passes. Demanding all of them would force padding;
    demanding none would let the failure [D-038](decision_log.md) names through.
-4. **Reference drafts are not model output.** They are built to stress the
-   rules a real draft stresses, but a real model will phrase things nobody
-   anticipated. The false-positive rate is therefore a lower bound on what a
-   live run would show.
+5. **Reference drafts are not model output.** They stress the rules a real
+   draft stresses, but a real model phrases things nobody anticipated — as §8.2
+   shows. The fault-injection false-positive rate is a lower bound on what a
+   larger live run would show.
+
+### 8.4 A result artifact was destroyed, and the guard that followed
+
+The live run's per-draft artifact **no longer exists**. A follow-up paced run
+was pointed at the same output filename; its credential had by then exhausted
+the daily quota, so it wrote a file containing zero drafts over the top of the
+completed twelve-draft run. The free-tier daily cap prevented regenerating it
+the same day.
+
+The figures in §8.1 and the analysis in §8.2 were read out of the artifact
+before it was lost and are recorded in
+`data/processed/phase12/live_gemini_summary.json`, which states its own
+provenance rather than presenting itself as a run output. The individual drafts
+are not recoverable.
+
+`scripts/phase12_synthesize.py` now refuses to overwrite an output file that
+already contains drafts unless `--force` is passed. A result file that cost
+real API calls is not a scratch file, and the script now knows that.
 
 ## 9. What Phase 13 receives
 
@@ -275,4 +338,5 @@ model name and the token usage. Three things it should do:
 - **Never retry silently.** `synthesize` returns a rejected draft rather than
   regenerating, precisely so the rejection rate stays visible
   ([D-042](decision_log.md)). A reviewer who cannot see how often the model
-  failed cannot calibrate how much to trust the drafts that passed.
+  failed cannot calibrate how much to trust the drafts that passed — and §8.2
+  is what that rate is protecting them from.

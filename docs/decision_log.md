@@ -51,6 +51,7 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-041](#d-041-a-numbers-precision-comes-from-the-claim-not-from-a-tolerance-constant) | A number's precision comes from the claim, not from a tolerance constant | Accepted | 2026-09-19 |
 | [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned) | One call, no repair loop, and a rejected draft is returned | Accepted | 2026-09-19 |
 | [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) | The model provider lives behind one seam, and the phase is measured without it | Accepted | 2026-09-19 |
+| [D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope) | A second provider, and the prompt leaves the vendor's envelope | Accepted | 2026-09-19 |
 
 ---
 
@@ -828,4 +829,37 @@ Model choice, when the key exists: **`claude-opus-5`**, with the response constr
 - **Stub the model with a deterministic generator and call it done.** Rejected as the more tempting error. A deterministic "synthesizer" would be a second, competing implementation of the phase, and measuring the validator against its own generator would be circular. The reference drafts in the measurement script are explicitly *test fixtures* and live in `scripts/`, never in the package.
 - **Write provider-agnostic code against a generic LLM interface.** Rejected: an abstraction over providers that have never both been used is an abstraction fitted to one of them anyway. One seam, one implementation, and a protocol narrow enough to add a second later.
 
-**Consequences.** `pyproject.toml` gains an `llm` extra. The 712-test suite runs with no credentials. [A-16](assumptions.md) stays open and says why. Phase 13 may assume a `SynthesisResult` exists but may not assume it was accepted.
+**Consequences.** `pyproject.toml` gains an `llm` extra. The test suite runs with no credentials. Phase 13 may assume a `SynthesisResult` exists but may not assume it was accepted. **Amended by [D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope):** a Gemini credential arrived, a second client was added behind the same seam, and the live measurement this entry deferred was taken — so the claim here that no live call has been made is superseded, while the reasoning that the phase had to be measurable without one stands.
+
+## D-044 A second provider, and the prompt leaves the vendor's envelope
+**Status:** Accepted (project owner supplied a credential, Phase 12, 2026-09-19) — extends [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it); implementation in `synthesis/prompt.py` and `synthesis/client.py`, results in [grounded_synthesis.md §8](grounded_synthesis.md).
+
+**Context.** [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) confined the provider to one module and recorded that no live call had been made, leaving [A-16](assumptions.md) open. The project owner then supplied a **Gemini** key, not an Anthropic one. The existing client could not use it, and the phase's standing gap could be closed only by adding a second implementation.
+
+**Decision, part 1 — the prompt stops being an Anthropic request.** `build_request` returned a Messages API dict, on the reasoning D-043 itself gave: an abstraction over one implementation is fitted to that implementation anyway. A second provider showed what that cost. The instructions, the evidence pack and the output schema are the things *this project* owns and versions; burying them in one vendor's envelope made `request_fingerprint` — which Phase 13 needs to prove a stored draft came from a stored assessment — permanently vendor-flavoured.
+
+So `prompt.SynthesisRequest` now carries `system`, `user`, `schema`, `max_tokens` and **no model**: which model runs a prompt is a property of the client, and including it would make two providers fingerprint the same prompt differently. Each client renders the request into its own wire format, and `render_anthropic` was lifted to a module-level function so the wire shape is testable without the SDK installed.
+
+**Decision, part 2 — keep both clients.** `GeminiSynthesisClient` joins `AnthropicSynthesisClient` behind the same protocol. Two providers on the same assessment, the same prompt and the same validator is a stronger statement about the grounding layer than either alone, and the neutral request makes that comparison exact rather than approximate.
+
+**Decision, part 3 — provider errors become `SynthesisError`.** The first live batch died on a `429` from the SDK's own exception type, taking the whole run with it. Translated at the seam, a quota refusal on one company is one recorded failure instead of a dead batch. This does **not** weaken [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned): nothing is retried, the failure is surfaced, and the caller still decides.
+
+**What the live run found.** `gemini-3.6-flash`, 120 assessments attempted, **12 drafts returned, 11 accepted (91.7%)**, 108 calls refused on free-tier quota. Pro-tier models report a quota of *zero* on a free credential, so the default model is the most capable one an ordinary key can reach — a deployment fact, not a quality judgement.
+
+**The single rejection is the most useful result in the phase.** Drafting for GT Advanced Technologies, the model produced a quotation it had been told to copy character for character:
+
+```text
+model:  ...could have a further adverse effect on     share price.
+filing: ...could have a further adverse effect on our share price.
+```
+
+It cited the correct evidence item and reproduced 195 characters exactly before dropping the word *our*. The draft reads as clean and well-sourced. That is exactly the invisible failure [D-040](#d-040-the-synthesis-deliverable-is-the-verdict-on-the-draft-not-the-draft) was built against — Phase 10's SC-03 guarantees the stored quote is verbatim, and one word removed downstream would have carried a misquotation into an analyst-facing draft. **The validator caught it on the first live batch, at n=12.**
+
+**Two things this does not establish.** Twelve drafts put a 95% interval on the acceptance rate of roughly 62%–100%; it shows the pipeline works end to end and that the validator fires on real output, and it is not a reliability figure. And prompt caching **did not engage** — `cached_content_token_count` was zero on every call — so §6's refusal to claim a saving stands as measured rather than as caution.
+
+**Alternatives.**
+- **Translate the Anthropic dict inside the Gemini client.** Rejected: it would have shipped faster and left the fingerprint vendor-flavoured forever, which is the one property Phase 13 cannot work around.
+- **Replace the Anthropic client with the Gemini one.** Rejected: the Anthropic path is written, tested and is the better-documented of the two; deleting it to match today's credential would discard a comparator for a reason that expires when a key arrives.
+- **Retry the 429s to reach a larger sample.** Rejected: it contradicts [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned)'s accounting and would have bought a bigger number by making it less meaningful. Pacing *between* assessments was added instead, which is waiting before a first attempt rather than making a second one.
+
+**Consequences.** [A-16](assumptions.md) moves from open to **partially validated**: a single structured call over an evidence pack does produce a grounded synthesis, measured once, at small n. `pyproject.toml`'s `llm` extra carries both SDKs. Two operational lessons were paid for and fixed: `--limit` now bounds *attempts* as well as successes, after a run with a dead credential walked all 202 assessments producing identical quota errors; and the script refuses to overwrite an output file that already holds drafts, after a paced re-run destroyed the only live measurement this phase had ([grounded_synthesis.md §8.4](grounded_synthesis.md)).
