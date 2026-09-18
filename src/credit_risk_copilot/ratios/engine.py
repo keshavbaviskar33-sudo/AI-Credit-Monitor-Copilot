@@ -20,6 +20,7 @@ from the project would not break this package (§38).
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Protocol
 
@@ -59,6 +60,29 @@ _ZERO_TOLERANCE = 1.0
 #: smaller figure, not a meaningful coverage signal. A quality flag, not a
 #: judgement about whether coverage is "good" -- that stays Phase 7's.
 _INTEREST_COVERAGE_NEAR_ZERO_RATIO = 0.02
+
+_YEAR_RE = re.compile(r"\d{4}")
+
+
+def _chronological(period_labels: Sequence[str]) -> tuple[str, ...]:
+    """Sort annual period labels (`"FY2025"`, D-007) into fiscal order.
+
+    `CanonicalFilingFacts.period_labels` follows XBRL fact insertion order
+    from the filer's raw `companyfacts` JSON, not fiscal order -- confirmed
+    against the real golden-set corpus (found ahead of Phase 7): iHeartMedia's
+    own filing reports periods as `('FY2014', 'FY2015', 'FY2016', 'FY2013')`,
+    oldest year last. `calculate_ratio_history` and `ratio_history_changes`
+    both require chronological input to produce correct deltas, so
+    `ratios_for_filing`'s default (every period on the filing) must not
+    inherit the filing's raw insertion order. An explicit `periods=` argument
+    is trusted as given -- a caller naming periods directly is choosing an
+    order on purpose, not asking for the filing's default."""
+    return tuple(sorted(period_labels, key=lambda label: _fiscal_year(label)))
+
+
+def _fiscal_year(period_label: str) -> int:
+    match = _YEAR_RE.search(period_label)
+    return int(match.group()) if match else 0
 
 
 def calculate_ratio(
@@ -270,7 +294,7 @@ def ratios_for_filing(
     `canonical_schema.md` §5). Structurally typed on `.get`/`.period_labels`
     rather than importing `CanonicalFilingFacts`, keeping this module's only
     dependency on Phase 5 at `financials.models`."""
-    period_labels = periods if periods is not None else filing.period_labels
+    period_labels = periods if periods is not None else _chronological(filing.period_labels)
     return calculate_ratio_history(filing.get, period_labels, definitions)
 
 

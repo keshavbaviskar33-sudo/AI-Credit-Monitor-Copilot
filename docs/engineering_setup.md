@@ -67,19 +67,59 @@ The `pdf` extra (`lxml`, `pdfplumber`, `pymupdf`) is required from Phase 4: the
 extraction package and its tests import it. `uv sync --extra dev` alone will
 leave those tests failing on import.
 
-Data-building scripts, both cache-first and safe to rerun:
+The `ml` extra (`scikit-learn`, `shap`) is required from Phase 8, for the same
+reason: `credit_risk_copilot.modeling` and its tests import it.
+
+Data-building scripts, all cache-first and safe to rerun:
 
 ```
 uv run python scripts/phase3_data_audit.py        # BRD <-> SEC linkage audit (Phase 3)
 uv run python scripts/build_golden_set.py         # golden evaluation set (Phase 4)
 uv run python scripts/table_extraction_spike.py   # R-19 library measurement (Phase 4)
+uv run python scripts/evaluate_multi_filing.py    # M-4 multi-filing path (Phase 8)
+uv run python scripts/validate_multi_filing.py    # M-4 validation: signals, restatements, vintages
+uv run python scripts/phase8_build_corpus.py      # modelling corpus (Phase 8)
+uv run python scripts/phase8_build_dataset.py     # point-in-time panel (Phase 8)
+uv run python scripts/phase8_train_evaluate.py    # baselines, ablation, artifact (Phase 8)
+uv run python scripts/phase9_pit_universe.py      # point-in-time filer universe (Phase 9)
+uv run python scripts/phase9_pit_corpus.py       # point-in-time comparison cohort
+uv run python scripts/phase9_pit_panel.py        # survivor vs point-in-time re-measurement
+uv run python scripts/phase9_size_matched.py     # eligibility/size-matched cohort test
+uv run python scripts/phase9_explain.py          # global drivers, era stability, local examples
+uv run python scripts/phase9_diagnostics.py      # missingness, confound probes, errors
+uv run python scripts/phase9_stability.py        # attribution stability, ranking analysis
 ```
 
 > `build_golden_set.py` takes roughly ten minutes per filing on a first run,
 > dominated by HTML→PDF rendering. Everything it downloads and renders is
 > cached under `data/`, so reruns are fast and cost no SEC requests.
 
-## 4. Line endings
+> The Phase 8 scripts run in the order listed. `phase8_build_corpus.py` makes a
+> few thousand rate-limited SEC requests and writes ~1.4 GB of `companyfacts`;
+> `phase8_build_dataset.py` then runs entirely offline but takes roughly an
+> hour, because the point-in-time rule requires re-resolving each company's
+> visible history at every filing date rather than resolving it once
+> ([D-026](decision_log.md)).
+
+> The Phase 9 scripts have the same shape. `phase9_pit_universe.py` streams 48
+> quarterly EDGAR indexes (~50 MB each) and keeps only the annual-filing rows;
+> `phase9_pit_corpus.py` then screens and fetches a second cohort (~1.7 GB);
+> `phase9_pit_panel.py` rebuilds the panel and takes about an hour for the same
+> reason `phase8_build_dataset.py` does. The three analysis scripts
+> (`phase9_explain.py`, `phase9_diagnostics.py`, `phase9_stability.py`) run
+> offline from the Phase 8 panel in a few minutes each.
+
+## 4. Continuous integration
+
+`.github/workflows/checks.yml` runs the four commands above — pytest, `ruff
+check`, `ruff format --check` and `mypy` — on every push to `main` and every
+pull request. It deliberately does **not** run the golden-corpus evaluations
+(QM-01 to M-4): `data/` is gitignored, runs to gigabytes, and is rebuilt by
+scripts that make thousands of rate-limited SEC requests. Those stay local,
+reproducible-on-demand measurements; CI's job is to keep the code that
+produces them honest.
+
+## 5. Line endings
 
 `.gitattributes` normalizes all text files to LF in the repository
 (`* text=auto eol=lf`), overriding any contributor's local `core.autocrlf`.

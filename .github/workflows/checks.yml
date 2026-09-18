@@ -1,0 +1,54 @@
+# The checks every phase of this project has been run by hand until now
+# (Phase 8 prerequisite C, architecture_audit.md §F-3).
+#
+# Deliberately small. It runs exactly the four commands the contributor
+# documentation already names -- tests, lint, format, types -- and nothing
+# else. The golden-corpus evaluations (QM-01 to QM-04) are *not* here and
+# should not be: `data/` is gitignored, runs to gigabytes, and is rebuilt from
+# SEC by scripts that make thousands of rate-limited requests. Those stay
+# local, reproducible-on-demand measurements; CI's job is to keep the code
+# that produces them honest.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # `pdf` and `ml` are needed because the test suite imports the
+      # extraction and modelling packages; `dev` carries the tooling.
+      - name: Install dependencies
+        run: uv sync --extra dev --extra pdf --extra ml
+
+      # SEC_USER_AGENT is required by `SecEdgarClient.__init__` (the client
+      # refuses to construct without one). No test makes a network request --
+      # every fixture is synthetic or cached -- but `tests/test_sec_edgar.py`
+      # constructs the client, so the variable has to be present.
+      - name: Tests
+        env:
+          SEC_USER_AGENT: "credit-risk-copilot CI ci@example.com"
+        run: uv run pytest
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Types
+        run: uv run mypy

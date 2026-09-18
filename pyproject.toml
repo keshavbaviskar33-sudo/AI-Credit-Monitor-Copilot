@@ -68,7 +68,7 @@ strict = true
 warn_unused_ignores = true
 # Third-party libraries without bundled type stubs.
 [[tool.mypy.overrides]]
-module = ["shap.*", "pdfplumber.*", "pymupdf.*", "fitz.*", "lxml.*"]
+module = ["shap.*", "pdfplumber.*", "pymupdf.*", "fitz.*", "lxml.*", "sklearn.*", "joblib.*"]
 ignore_missing_imports = true
 
 # pymupdf ships no annotations, so every Story/DocumentWriter call reads as

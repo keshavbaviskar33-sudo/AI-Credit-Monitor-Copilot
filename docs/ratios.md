@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | v1.1 — Phase 6, audited (§8) |
 | **Date** | 2026-09-16 |
-| **Related** | [D-019](decision_log.md) · [D-020](decision_log.md) · [D-021](decision_log.md) · [canonical_schema.md](canonical_schema.md) (the Phase 5 → 6 interface) · [QM-02](#6-qm-02--real-corpus-evaluation) |
+| **Related** | [D-019](decision_log.md) · [D-020](decision_log.md) · [D-021](decision_log.md) · [canonical_schema.md](canonical_schema.md) (the Phase 5 → 6 interface) · [M-2](#6-m-2--real-corpus-evaluation) |
 
 Phase 5 answers "what does the filing's XBRL represent financially" — a
 typed, provenance-carrying `CanonicalFact` per (concept, period). Phase 6
@@ -216,7 +216,7 @@ view. Not exercised against the real corpus (the golden set has one filing
 per company); unit-tested with a synthetic fixture, matching how Phase 5
 tested `CompanyFinancials` itself.
 
-## 6. QM-02 — real-corpus evaluation
+## 6. M-2 — real-corpus evaluation
 
 `scripts/evaluate_ratios.py` runs every ratio over every comparative period
 of all 12 golden-set filings — 598 (ratio, period) calculations, entirely
@@ -260,6 +260,26 @@ finding about Phase 5, not about the ratio engine's own logic:
 > constraint on how far back a ratio history can usefully go for a given
 > filer, and Phase 7's trend analysis should expect shorter, and
 > filer-dependent, series lengths rather than a uniform N years.
+
+**Amended in Phase 8 (M-4): most of that 48.2% was the harness, not the
+data.** The measurement above reads *one accession's own comparative columns*.
+A company's earlier 10-Ks report those same fiscal years as **their** primary
+period — where coverage is 95.5%, not 48.2% — so assembling a company's filing
+history through `CompanyFinancials.as_of()` recovers most of the gap.
+Re-measured over the same 12 companies (`scripts/evaluate_multi_filing.py`,
+M-4):
+
+| | Single accession | Multi-filing (`as_of`) |
+|---|---:|---:|
+| Ratio slots | 598 | 2,405 |
+| Calculated | 362 — **60.5%** | 1,953 — **81.2%** |
+
+Four times the period slots at a materially *higher* calculated rate. The
+residual 19% is the genuine Phase 5 constraint, concentrated in pre-2013
+filings (mean coverage 21% for 2009-vintage periods, rising above 96% from
+2017 — `financial_health.md` §7a.2). The original finding stands as a
+statement about a single accession; it should not be quoted as a limit on what
+the pipeline can see about a company.
 
 **Per-ratio comparative-year coverage** (Phase 6 audit, 2026-09-16), broken
 out because the drop in §6 is not uniform across ratios — this is what Phase

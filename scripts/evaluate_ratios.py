@@ -120,7 +120,7 @@ def main() -> None:
         "slots_with_warnings": int((detail["warning_count"] > 0).sum()) if not detail.empty else 0,
     }
     (OUT_DIR / "qm02_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    logger.info("QM-02 summary: %s", summary)
+    logger.info("M-2 summary: %s", summary)
 
 
 if __name__ == "__main__":

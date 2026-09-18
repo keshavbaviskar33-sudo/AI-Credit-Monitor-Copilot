@@ -413,6 +413,31 @@ def test_ratios_for_filing_defaults_to_every_period_on_the_filing() -> None:
     assert [r.value for r in history["current_ratio"]] == [1.5, 2.0]
 
 
+def test_ratios_for_filing_sorts_periods_chronologically_by_default() -> None:
+    """`CanonicalFilingFacts.period_labels` follows XBRL fact insertion
+    order, not fiscal order -- real golden-set filings return it out of
+    order (e.g. iHeartMedia: `('FY2014', 'FY2015', 'FY2016', 'FY2013')`).
+    `ratios_for_filing`'s default must not inherit that, or
+    `ratio_history_changes` would compute deltas between the wrong pairs."""
+    facts = {
+        ("current_assets", "FY2025"): _fact("current_assets", 2000, period_label="FY2025"),
+        ("current_liabilities", "FY2025"): _fact(
+            "current_liabilities", 1000, period_label="FY2025"
+        ),
+        ("current_assets", "FY2024"): _fact("current_assets", 1500, period_label="FY2024"),
+        ("current_liabilities", "FY2024"): _fact(
+            "current_liabilities", 1000, period_label="FY2024"
+        ),
+    }
+    # Deliberately out of fiscal order, matching the real corpus pattern.
+    filing = _FakeFiling(facts, period_labels=("FY2025", "FY2024"))
+
+    history = ratios_for_filing(filing)
+
+    assert [r.period_label for r in history["current_ratio"]] == ["FY2024", "FY2025"]
+    assert [r.value for r in history["current_ratio"]] == [1.5, 2.0]
+
+
 def test_ratios_for_filing_honours_an_explicit_period_subset() -> None:
     facts = {
         ("current_assets", "FY2025"): _fact("current_assets", 2000, period_label="FY2025"),

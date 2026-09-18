@@ -9,6 +9,11 @@ its output against a filing's own HTML tables.
 
 from credit_risk_copilot.financials.company import CompanyFinancials, Restatement
 from credit_risk_copilot.financials.concept_map import CONCEPT_DEFINITIONS, CONCEPTS_BY_ID
+from credit_risk_copilot.financials.history import (
+    CompanyHistory,
+    SkippedFiling,
+    resolve_company_history,
+)
 from credit_risk_copilot.financials.models import (
     CandidateValue,
     CanonicalFact,
@@ -35,6 +40,7 @@ __all__ = [
     "CanonicalFact",
     "CanonicalFilingFacts",
     "CompanyFinancials",
+    "CompanyHistory",
     "Confidence",
     "FactStatus",
     "ManualCorrection",
@@ -43,11 +49,13 @@ __all__ = [
     "PeriodType",
     "Provenance",
     "Restatement",
+    "SkippedFiling",
     "SourceType",
     "StatementType",
     "ValidationResult",
     "classify_table",
     "corroborate_fact",
     "corroborate_filing",
+    "resolve_company_history",
     "resolve_filing",
 ]
