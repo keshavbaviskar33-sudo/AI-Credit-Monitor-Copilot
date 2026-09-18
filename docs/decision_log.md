@@ -52,6 +52,7 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned) | One call, no repair loop, and a rejected draft is returned | Accepted | 2026-09-19 |
 | [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) | The model provider lives behind one seam, and the phase is measured without it | Accepted | 2026-09-19 |
 | [D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope) | A second provider, and the prompt leaves the vendor's envelope | Accepted | 2026-09-19 |
+| [D-045](#d-045-the-remaining-eight-phases-become-four) | The remaining eight phases become four | Accepted | 2026-09-19 |
 
 ---
 
@@ -863,3 +864,44 @@ It cited the correct evidence item and reproduced 195 characters exactly before 
 - **Retry the 429s to reach a larger sample.** Rejected: it contradicts [D-042](#d-042-one-call-no-repair-loop-and-a-rejected-draft-is-returned)'s accounting and would have bought a bigger number by making it less meaningful. Pacing *between* assessments was added instead, which is waiting before a first attempt rather than making a second one.
 
 **Consequences.** [A-16](assumptions.md) moves from open to **partially validated**: a single structured call over an evidence pack does produce a grounded synthesis, measured once, at small n. `pyproject.toml`'s `llm` extra carries both SDKs. Two operational lessons were paid for and fixed: `--limit` now bounds *attempts* as well as successes, after a run with a dead credential walked all 202 assessments producing identical quota errors; and the script refuses to overwrite an output file that already holds drafts, after a paced re-run destroyed the only live measurement this phase had ([grounded_synthesis.md §8.4](grounded_synthesis.md)).
+
+## D-045 The remaining eight phases become four
+**Status:** Accepted (project owner decision, 2026-09-19) — amends [D-009](#d-009-roadmap-amendments); the phase table in [roadmap.md](roadmap.md) is updated in place.
+
+**Context.** Twelve of twenty phases are complete. The remaining eight were laid out in Phase 1, before any of the work existed, and by now the project knows things about itself that the plan does not. Reviewing them against what has actually been built, three do not survive contact with it, and the work that most needs doing is not on the list at all.
+
+**Decision.** Eight remaining phases become **four**. Phase numbers are **not** reassigned: every document in this repository cross-references phases by number, and renumbering to make a table tidy would silently invalidate dozens of links and a year of commit messages. Merged and cut phases keep their rows and state what happened to them.
+
+| # | Was | Now |
+|---|---|---|
+| 13 | Human analyst review | **Analyst review & append-only persistence** — absorbs 15 |
+| 14 | Dashboard / product UI | **Dashboard / product UI** — absorbs 18 |
+| 15 | Database / SQL architecture | **Merged into 13** |
+| 16 | External API integration | **Cut** |
+| 17 | Robustness & evaluation | **Reframed: pay the measurement debts** |
+| 18 | Product & UX polish | **Merged into 14** |
+| 19 | Documentation & architecture | **Documentation, architecture & write-up** — absorbs 20 |
+| 20 | Resume & interview preparation | **Merged into 19** |
+
+**Why each.**
+
+- **15 into 13.** Phase 13 must persist immutable drafts and separate analyst edits (FR-18, FR-19), which *is* a schema with versioning and history queries. Scheduling a "database architecture" phase after the database exists invites rewriting a working schema to justify the phase. If 13 is done properly there is nothing left for 15; if 13 is done badly, a later phase will not save it.
+- **18 into 14.** Separating "build the UI" from "make the UI good" is the arrangement that produces a UI built badly and then polished. One phase, built to a standard.
+- **16 cut.** SEC has been integrated since Phase 5 and nothing in twelve phases of measurement has produced an open question that a second data provider would answer. It was in the plan because a generic roadmap template has an integration phase, not because this project needs one. Reinstate it if a real need appears; do not build it to complete a table.
+- **17 reframed.** "Consolidate the per-phase evaluation suites" is low value — they already run in CI and each phase's numbers are already reported. The real robustness work is the set of measurements this project has deferred and named, listed below. That is what Phase 17 becomes.
+- **20 into 19.** A write-up of measured results is a section of the documentation phase, not a phase.
+
+**The debts Phase 17 inherits.** These were each named by the phase that deferred them, and they matter more than the three phases being merged or cut:
+
+1. **Phase 11's health layer was reconstructed from the Phase 8 feature encoding, not re-run** ([combined_assessment.md §8](combined_assessment.md)). It biases `DIMENSION_DISAGREEMENT` upward and every health-based corroboration downward. Its own doc calls this the highest-value follow-up.
+2. **[D-032](#d-032-the-negative-universe-becomes-point-in-time)'s named next step was never taken** — matching the negative universe on BRD's *eligibility* conditions rather than on survival. That confound is why pooled model metrics are not quotable as bankruptcy prediction.
+3. **The live synthesis sample is 12 drafts from one provider** ([D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope)). The Anthropic client has never made a call, and the provider-neutral prompt now makes a two-model comparison a one-command measurement.
+4. **Phase 10's recall is built but unlabelled** ([nlp_risk_signals.md](nlp_risk_signals.md)). Precision is reported; recall is not.
+5. **Fourteen assumptions remain open**, including A-09 (feature reproducibility), A-11 (bankruptcy as a distress proxy), A-13 (enough events for an out-of-time test) and A-14 (base-rate framing) — the four that decide whether the predictive layer means anything.
+
+**Alternatives.**
+- **Keep all eight as written.** Rejected: it spends three phases on work the project has not asked for, and leaves five named measurement debts unpaid while the table reads complete. A plan that produces a full checklist and a weaker result is the wrong plan.
+- **Pay the debts before any feature work.** Rejected as an ordering, not as a priority: the debts strengthen results that are already reported and caveated, whereas [D-003](#d-003-analyst-owns-every-final-judgement) — the analyst owns every final judgement — has been this project's first principle since Phase 1 and is *still not implemented*. Building the review layer first closes the larger gap. The debts keep their own phase rather than being dropped.
+- **Renumber the phases.** Rejected: every doc cross-references phases by number. Tidiness is not worth invalidating the references that make the history auditable.
+
+**Consequences.** Four phases remain: **13** (review and persistence), **14** (UI), **17** (measurement debts), **19** (documentation and write-up). The phase table keeps twenty rows so the plan's own history stays readable, and [D-009](#d-009-roadmap-amendments)'s convention — amend the roadmap, never silently rewrite it — is followed here as it was for every earlier amendment.
