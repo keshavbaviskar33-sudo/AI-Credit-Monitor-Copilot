@@ -13,10 +13,16 @@ approves, modifies or rejects the draft and records their own judgement.
 
 ## Status
 
-**Phase 13 of 20 — Analyst review & append-only persistence (complete).**
-Three phases remain — the UI, a measurement-debt pass and documentation
-([D-045](docs/decision_log.md) merged or cut the other four). See
-[roadmap.md](docs/roadmap.md) for the full phase table.
+**Phase 14 of 20 — The analyst workspace (complete).** Two phases remain — a
+measurement-debt pass and documentation ([D-045](docs/decision_log.md) merged
+or cut the other four). See [roadmap.md](docs/roadmap.md) for the full phase
+table.
+
+```
+uv sync --extra dev --extra pdf --extra ml --extra ui
+uv run python scripts/build_workspace_db.py    # 202 assessments, 163 companies
+uv run streamlit run app.py
+```
 
 The pipeline runs end to end, from SEC filings to a point-in-time risk estimate:
 
@@ -103,6 +109,15 @@ SEC companyfacts (XBRL, as filed)  ──┐
   have one. Verified on the full corpus: 202 assessments, **0 round-trip
   mismatches**, **6 of 6 edit attempts refused**, 39 superseded entries with
   their reviews intact.
+- **Phase 14** — the analyst workspace ([workspace_ui.md](docs/workspace_ui.md)).
+  **Where a risk score would normally sit, three independent reads sit
+  instead** — financial trends, model ranking and the filer's own words, each
+  with its method and its evidence, and their disagreements directly beneath.
+  The desk groups companies by *named reason* rather than ranking them,
+  because an ordering would reintroduce the composite score as a sort key.
+  Numbers render monospace, risk is never carried by colour alone, and a
+  navigation-level **Method & limits** page lists what the product will *not*
+  show and why.
 
 ## Environment setup
 
@@ -139,6 +154,7 @@ the Python 3.12 library compatibility check, and all `uv` commands.
 | [Combined assessment](docs/combined_assessment.md) | Evidence register, contradiction and corroboration rules, the as-of gate, matched-budget results |
 | [Grounded synthesis](docs/grounded_synthesis.md) | Claim schema, the eight grounding checks, fault-injection results, what is not measured |
 | [Review & persistence](docs/review_and_persistence.md) | Review schema, append-only guarantees, derived lifecycle state, corpus verification |
+| [Analyst workspace](docs/workspace_ui.md) | Information architecture, the three reads, design system, data provenance, limitations |
 | [Engineering setup](docs/engineering_setup.md) | Python/library compatibility check, toolchain, commands |
 | [Decision log](docs/decision_log.md) | Architectural and product decisions |
 | [Architecture audit](docs/architecture_audit.md) | Build-vs-buy / open-source audit of Phases 1–7 and Phase 8 readiness |

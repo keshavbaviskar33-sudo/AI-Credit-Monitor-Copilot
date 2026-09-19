@@ -25,8 +25,9 @@ dependencies = [
 ml = ["scikit-learn>=1.5,<1.10", "shap>=0.46,<0.53"]
 # Phase 4-5: document extraction (text-based PDFs) and XBRL/HTML parsing.
 pdf = ["pdfplumber>=0.11,<0.12", "pymupdf>=1.24,<1.29", "lxml>=5.3,<7"]
-# Phase 14 (proposed initial choice, see decision_log.md D-012): dashboard UI.
-ui = ["streamlit>=1.38,<1.64"]
+# Phase 14: the analyst workspace. Altair ships with Streamlit and is used for
+# every chart; no separate plotting dependency is needed (D-052).
+ui = ["streamlit>=1.57,<2"]
 # Phase 13's append-only store uses stdlib `sqlite3` (D-048), so the audit
 # trail's tests run with no optional extra installed. The SQLAlchemy `db`
 # extra declared here in Phase 2 was never imported and has been removed.

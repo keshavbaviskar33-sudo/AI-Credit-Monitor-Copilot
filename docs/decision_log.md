@@ -57,6 +57,9 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-047](#d-047-supersession-and-lifecycle-state-are-derived-never-stored) | Supersession and lifecycle state are derived, never stored | Accepted | 2026-09-19 |
 | [D-048](#d-048-stdlib-sqlite3-and-the-review-rules-live-in-the-type) | Stdlib `sqlite3`, and the review rules live in the type | Accepted | 2026-09-19 |
 | [D-049](#d-049-the-credit-watch-vocabulary-describes-action-not-severity) | The credit watch vocabulary describes action, not severity | Accepted | 2026-09-19 |
+| [D-050](#d-050-the-workspaces-centrepiece-is-three-independent-reads-not-a-risk-score) | The workspace's centrepiece is three independent reads, not a risk score | Accepted | 2026-09-19 |
+| [D-051](#d-051-the-desk-groups-by-named-reason-it-does-not-rank) | The desk groups by named reason; it does not rank | Accepted | 2026-09-19 |
+| [D-052](#d-052-theme-configuration-over-css-and-links-over-programmatic-page-switching) | Theme configuration over CSS, and links over programmatic page switching | Accepted | 2026-09-19 |
 
 ---
 
@@ -993,3 +996,84 @@ There is a second, sharper problem. A severity scale invites comparison with the
 - **Reuse the model's percentile bands as statuses.** Rejected outright: it would make the analyst's standing a function of the model's output, which inverts [D-003](#d-003-analyst-owns-every-final-judgement).
 
 **Consequences.** `CreditWatchStatus` is a closed enum on the review record, set only by an analyst action (FR-20). The watchlist is returned alphabetically rather than ordered by status, because there is no ordering over these four terms that is not a severity scale reintroduced as a sort key.
+
+## D-050 The workspace's centrepiece is three independent reads, not a risk score
+**Status:** Accepted (project owner brief, Phase 14, 2026-09-19) — implementation in `src/credit_risk_copilot/workspace/`, `app_pages/company.py`; report in [workspace_ui.md](workspace_ui.md).
+
+**Context.** The UI brief asked for a risk assessment as the visual centrepiece, in the conventional shape: `ELEVATED · 72/100 · 84% confidence · ↑ deteriorating`. That is what a credit interface normally opens with, and it is what a reader expects.
+
+**This system produces none of those four numbers.** There is no combined score ([D-036](#d-036-phase-11-produces-an-evidence-package-not-a-combined-score)), the model output is a ranking position rather than a probability ([D-033](#d-033-the-model-output-is-a-ranking-and-the-schema-says-so), [D-010](#d-010-ml-output-is-not-called-a-probability-of-default)), no confidence value is computed anywhere, and a severity vocabulary was refused as recently as [D-049](#d-049-the-credit-watch-vocabulary-describes-action-not-severity). The same brief also forbids fabricating model scores and confidence scores, so its example and its data-integrity rule point in opposite directions. The rule wins.
+
+**Decision.** The centre of the company page is **three independent verdicts side by side** — financial trends, model ranking, filing language — each with its own headline, its own stated method and its own evidence. Directly beneath them: where those three disagree, and where they agree.
+
+Three reasons, in ascending order of importance.
+
+1. **It is honest.** Every element traces to an `EV-` item with a filing behind it. A `72/100` would be the only thing on screen that did not.
+2. **Research points the same way.** Provenance-interface work finds that showing the evidence — the source passage, the retrieved record — is more effective for analyst trust than a single trust meter, and that inline citation turns output from *trust me* into *check me*. A confidence percentage is the trust meter; the evidence register is the alternative.
+3. **It is more useful.** An analyst learns more from "the ratios are calm, the model ranks this in the top 3%, and the filer states going-concern doubt" than from any average of the three. Averaging would destroy the disagreement, and the disagreement is the one finding no single layer produces.
+
+**Supporting rules, each enforced in the type rather than in a stylesheet.**
+
+- `LayerRead.available` is separate from `concern=QUIET`, so a layer that did not run renders "Did not run" with its reason and never a calm verdict.
+- Every read states its own **method**, because three verdicts are only worth comparing if the reader knows one is arithmetic, one is a fitted model and one is a pattern match over English.
+- The model read never renders without the word *percentile*, and its caveats travel with it.
+- A test asserts that no field named `score`, `risk_score`, `confidence`, `rating` or `severity` exists on the objects the page renders. The refused number cannot reappear as a widget without failing the suite.
+
+**Alternatives.**
+- **Ship the conventional score and caveat it.** Rejected: a number in a large font with a caveat underneath is read as the number. The caveat is the part that gets skipped, which is exactly the failure [D-010](#d-010-ml-output-is-not-called-a-probability-of-default) was written against.
+- **Show the model percentile alone as the headline.** Rejected: it is one of three readings and the least interpretable in isolation — its cohort confound is measured and documented. Promoting it to the centre would give it an authority the evidence does not support.
+- **Compute a display-only composite from the three reads.** Rejected as the most tempting error. A number invented in the presentation layer is worse than one invented in the model, because nothing downstream records how it was derived.
+
+**Consequences.** The Method & limits page is navigation-level rather than buried, and its table of things the product *will not* show is the app's most important content. Every conventional element the brief asked for has an explicit substitution listed there, so an analyst who looks for EBITDA or a confidence figure learns whether it is missing because the data is absent or because showing it would be a lie.
+
+## D-051 The desk groups by named reason; it does not rank
+**Status:** Accepted (delegated to engineering judgement, Phase 14, 2026-09-19) — implementation in `workspace/build.py`, `app_pages/desk.py`.
+
+**Context.** A monitoring product's home screen must answer "what needs me today". The default shape is a priority queue, ordered most-urgent first.
+
+**Ordering companies against each other requires a severity number**, and producing one here would reintroduce the composite [D-050](#d-050-the-workspaces-centrepiece-is-three-independent-reads-not-a-risk-score) had just refused — this time as a sort key, where it would be even harder to notice. The predictive model's percentile is not comparable across scoring years; the trend layer reports per-dimension directions and declines to average them; the narrative layer reports what a filer stated, with per-code specificity. There is no axis to sort on.
+
+**Decision.** The desk groups companies by **named reason**. Six reasons, each a checkable fact about the assessment: the filer states a severe condition; all three layers are elevated; the layers disagree; the draft failed grounding; filing sections were unread; nobody has reviewed it. A company appears under every reason that applies, each reason carries a plain-English explanation of what it means, and reasons are not weighted against each other.
+
+This is not a compromise — it is better UX than the ranking. "Top of the queue" tells an analyst nothing; "the filer states going-concern doubt" tells them what to open and why. And a company appearing under three reasons is visibly a different proposition from one appearing under a single reason, without any arithmetic claiming to know how much different.
+
+The four counters above the list are counts of companies matching a condition, not scores, and the page carries an expander explaining why it has no ranking — so the absence reads as a decision rather than an omission.
+
+**Alternatives.**
+- **Rank by model percentile.** Rejected: it is one layer of three, not comparable across years, and it would make the desk an ML leaderboard rather than an analyst's inbox.
+- **Rank by count of elevated layers.** Rejected: it is a composite score with three possible values, and it would rank three low-specificity agreements above one asserted going-concern doubt.
+- **Let the analyst choose a sort.** Rejected for the MVP: every option in the menu would still need an ordering this project cannot justify.
+
+**Consequences.** `group_by_attention` returns a reason → companies mapping, and the ordering within a bucket is alphabetical. `ReviewStore.watchlist()` already returned companies alphabetically for the same reason, so the refusal is consistent from the database up to the screen.
+
+## D-052 Theme configuration over CSS, and links over programmatic page switching
+**Status:** Accepted (delegated to engineering judgement, Phase 14, 2026-09-19) — implementation in `.streamlit/config.toml`, `app.py`.
+
+**Context.** Two implementation choices shaped the workspace more than any other.
+
+**Decision, part 1 — the design system is theme configuration, not a stylesheet.** Palette, type scale, radii, semantic colours, chart series and dataframe styling are all declared in `.streamlit/config.toml`, for both a light and a dark variant. Almost no CSS is written.
+
+A stylesheet targeting a framework's generated class names is a maintenance liability that breaks on upgrade and drifts out of sync with widgets it never anticipated. Theme configuration applies to every widget, chart and table consistently, survives upgrades, and gives the analyst a working light/dark switch for free.
+
+Three choices inside it do most of the visual work:
+
+- **Numbers render in a monospace face.** The highest-value typographic decision available in a financial interface: columns of ratios line up digit for digit. Achieved through the theme's code font and Markdown backticks, so it needs no CSS at all.
+- **Risk is never carried by colour alone.** Elevated is amber, quiet is a desaturated teal, unknown is grey — never red-versus-green — and each state also carries an icon and a word. Red is reserved for a *failure* (a rejected draft, a grounding violation), never for a company doing badly.
+- **A warm neutral ground, 4px radii, borders rather than shadows.** An analyst reads this for hours; the warmth is calmer than blue-slate, and 4px reads as a precision instrument where 12px reads as a consumer app.
+
+**Decision, part 2 — navigation is by link, not by `st.switch_page`.** Every page has an explicit `url_path` and the workspace is reached at `/company?cik=...`, with the query parameter authoritative over session state.
+
+This was not the first design. `st.switch_page` was tried, and it failed in the worst available way: **accepted without error and then silently doing nothing**, while passing its unit test. Debugging it surfaced three separate traps worth recording, because each looks like a styling problem and none is:
+
+1. `st.switch_page` inside a widget `on_click` callback is a no-op.
+2. Streamlit hot-reloads page scripts but **not imported modules**, so edits to a helper module do nothing until the server restarts — which made two fixes look like failures.
+3. Holding `st.Page` objects at module level lets Python's import cache reuse them across runs, and the second interaction raises *"this page cannot be called directly"*.
+
+Links avoid all three. A link cannot half-work, it survives a reload, and it makes every company workspace a URL an analyst can bookmark or paste to a colleague. **The deep-linkability is worth more than the callback convenience it replaced**, so this is the better design rather than a workaround that happens to function.
+
+**Alternatives.**
+- **A custom stylesheet for a bespoke look.** Rejected: the theme system reaches the same result, and the parts it cannot reach were not worth a file that breaks on upgrade.
+- **Keep `st.switch_page` and work around each trap.** Rejected: three workarounds to preserve a mechanism whose failure mode is silence, when the alternative is a plain URL that is also a product feature.
+- **A React front end over a new HTTP API.** Rejected for this phase: the backend is a Python library with no service layer, so it would mean building and maintaining an API before any of the analyst-facing work could start. The seam is the `workspace` package, which imports no Streamlit and would be the same behind any renderer.
+
+**Consequences.** `src/credit_risk_copilot/workspace/` holds the view models and imports no UI framework, so what the screen is allowed to say is unit-tested without a browser — 18 tests, including the one that keeps the combined score from reappearing. `app_pages/` holds Streamlit and does no derivation. Replacing the renderer later means rewriting `app_pages/` and keeping everything that decides what is true.

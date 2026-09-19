@@ -1,0 +1,162 @@
+# Design system for the credit analyst workspace.
+#
+# Everything here is theme configuration rather than CSS, so the app's
+# appearance survives Streamlit upgrades and stays consistent across every
+# widget, chart and table without a stylesheet to keep in sync.
+#
+# Three decisions carry the look:
+#
+#   1. The base is a warm neutral near-black (dark) and a warm paper white
+#      (light), not the blue-slate every analytics template ships with. An
+#      analyst reads this for hours; a slightly warm ground is calmer than a
+#      cool one and stops the product reading as a generic SaaS dashboard.
+#
+#   2. Risk is never carried by red-versus-green alone. "Elevated" is amber,
+#      "quiet" is teal, "unknown" is grey, and every one of them is also
+#      labelled in words and marked with an icon in the UI. Red is reserved
+#      for a *failure* -- a rejected draft, a grounding violation -- not for
+#      a company doing badly.
+#
+#   3. Numbers are monospace. Body text is Inter; every figure the analyst
+#      scans renders in JetBrains Mono via the code font, so columns of
+#      ratios line up digit for digit. This is the single highest-value
+#      typographic choice in a financial interface.
+
+[theme]
+# Shared across both modes: type, density and shape.
+font = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+
+baseFontSize = 14
+baseFontWeight = 400
+codeFontSize = "13px"
+codeFontWeight = 500
+
+# Restrained heading scale. A dense analytical page needs hierarchy, not
+# billboard type -- the largest heading is only 1.7x body.
+headingFontSizes = ["24px", "19px", "16px", "14px", "13px", "12px"]
+headingFontWeights = [600, 600, 600, 600, 500, 500]
+
+# "Avoid excessive rounded rectangles": 4px reads as a precision instrument,
+# 12px reads as a consumer app.
+baseRadius = "4px"
+buttonRadius = "4px"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+[theme.dark]
+backgroundColor = "#0B0C0E"
+secondaryBackgroundColor = "#15171A"
+codeBackgroundColor = "#15171A"
+textColor = "#E9E7E4"
+borderColor = "#282B31"
+codeTextColor = "#E9E7E4"
+primaryColor = "#D4A857"
+linkColor = "#7FB6C9"
+
+# Semantic palette. `green` is a desaturated teal on purpose -- it reads as
+# "nothing to act on" without claiming a company is healthy, and it stays
+# distinguishable from amber for the ~8% of men with red-green deficiency.
+greenColor = "#6FB3A8"
+orangeColor = "#E0A458"
+yellowColor = "#D4A857"
+redColor = "#D4766B"
+blueColor = "#7FB6C9"
+violetColor = "#A895C7"
+grayColor = "#8B9099"
+
+dataframeBorderColor = "#282B31"
+dataframeHeaderBackgroundColor = "#15171A"
+
+# Analytical, low-saturation series colours. Ordered so the first three are
+# distinguishable in greyscale as well as in hue.
+chartCategoricalColors = [
+    "#D4A857",
+    "#7FB6C9",
+    "#6FB3A8",
+    "#A895C7",
+    "#D4766B",
+    "#8B9099",
+    "#B8935E",
+    "#5A8FA3",
+]
+chartSequentialColors = [
+    "#15171A",
+    "#1F2831",
+    "#2A3A47",
+    "#374D5D",
+    "#456173",
+    "#557689",
+    "#688B9E",
+    "#7FA1B3",
+    "#9AB8C7",
+    "#BBD1DB",
+]
+
+[theme.dark.sidebar]
+backgroundColor = "#0E1013"
+secondaryBackgroundColor = "#191C20"
+codeBackgroundColor = "#191C20"
+textColor = "#E9E7E4"
+borderColor = "#282B31"
+primaryColor = "#D4A857"
+
+[theme.light]
+backgroundColor = "#FCFBF9"
+secondaryBackgroundColor = "#F2F0EC"
+codeBackgroundColor = "#F2F0EC"
+textColor = "#1C1B19"
+borderColor = "#DDD9D2"
+codeTextColor = "#1C1B19"
+primaryColor = "#8A6D1F"
+linkColor = "#2C6B82"
+
+greenColor = "#2E7F73"
+orangeColor = "#9C6318"
+yellowColor = "#8A6D1F"
+redColor = "#A34B3F"
+blueColor = "#2C6B82"
+violetColor = "#6B5A8E"
+grayColor = "#6B6F76"
+
+dataframeBorderColor = "#DDD9D2"
+dataframeHeaderBackgroundColor = "#F2F0EC"
+
+chartCategoricalColors = [
+    "#8A6D1F",
+    "#2C6B82",
+    "#2E7F73",
+    "#6B5A8E",
+    "#A34B3F",
+    "#6B6F76",
+    "#B08A2E",
+    "#4A8299",
+]
+chartSequentialColors = [
+    "#F2F0EC",
+    "#DCE5EA",
+    "#C4D5DE",
+    "#ABC4D1",
+    "#92B3C4",
+    "#7AA2B7",
+    "#6290A9",
+    "#4C7E99",
+    "#3A6B84",
+    "#2C5870",
+]
+
+[theme.light.sidebar]
+backgroundColor = "#F6F4F1"
+secondaryBackgroundColor = "#EAE7E2"
+codeBackgroundColor = "#EAE7E2"
+textColor = "#1C1B19"
+borderColor = "#DDD9D2"
+primaryColor = "#8A6D1F"
+
+[server]
+runOnSave = true
+
+[browser]
+gatherUsageStats = false
