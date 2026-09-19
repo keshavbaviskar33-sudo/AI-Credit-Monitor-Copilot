@@ -2,11 +2,25 @@
 
 | | |
 |---|---|
-| **Status** | Audit complete (2026-09-17). Migration: M-1, M-3, M-4 done; M-2, M-5 open — see [§7](#7-recommended-migration-sequence) |
-| **Date** | 2026-09-17 |
+| **Status** | **Historical.** Audit complete 2026-09-17, against the code as it stood at Phase 7. Migration: M-1, M-3, M-4 done; **M-2 resolved by events, M-5 still open** — see [§7](#7-recommended-migration-sequence) |
+| **Date** | 2026-09-17 (status reviewed 2026-09-19, Phase 19) |
 | **Scope** | Everything built through Phase 7, plus library/tooling posture for Phases 8–20 |
-| **Baseline verified** | 324 tests pass · 97% line coverage · `ruff check` clean · `ruff format` clean · `mypy --strict` clean (35 files) |
-| **Related** | [roadmap.md](roadmap.md) · [decision_log.md](decision_log.md) · [canonical_schema.md](canonical_schema.md) · [ratios.md](ratios.md) · [financial_health.md](financial_health.md) |
+| **Baseline verified** | 324 tests pass · 97% line coverage · `ruff check` clean · `ruff format` clean · `mypy --strict` clean (35 files) — *the Phase 7 baseline; the current one is 758 tests, 94% coverage, 79 files* |
+| **Related** | [architecture.md](architecture.md) · [roadmap.md](roadmap.md) · [decision_log.md](decision_log.md) · [canonical_schema.md](canonical_schema.md) · [ratios.md](ratios.md) · [financial_health.md](financial_health.md) |
+
+> **Read [architecture.md](architecture.md) for the architecture as it is now.**
+> This document is a Phase 1–7 artifact and is kept as one ([D-056](decision_log.md)):
+> it records what was considered and rejected as a dependency and why the
+> custom code is custom, which is reasoning that does not expire — and it
+> contains its own most important finding, [§F-1](#f-1-the-multi-filing-path-is-built-tested-and-unused),
+> that the multi-filing point-in-time path was built, tested, exported and had
+> never been run against real data. That finding and its M-4 resolution are the
+> reason two phases of quality numbers had to be re-measured, and preserving
+> them in place is worth more than folding them into a current-state document.
+>
+> Everything below describes eleven packages when there were eight. Four of the
+> nine boundaries [architecture.md §2](architecture.md) documents did not exist
+> yet.
 
 ---
 
@@ -559,6 +573,11 @@ recommendation is to keep honouring it when FSDS arrives.
 > during Phase 8). M-2 and M-5 remain open. Outcomes are recorded inline
 > below rather than in a separate changelog, so the plan and what came of
 > it stay in one place.
+>
+> **Reviewed again 2026-09-19 (Phase 19). M-2 is closed — not done, but
+> dissolved**, because its premise stopped being true. See its entry below.
+> **M-5 remains open** and is now the oldest unactioned recommendation in the
+> project.
 
 **M-1 · CI workflow** (F-3) — ✅ **done.** `.github/workflows/checks.yml`:
 `uv sync --extra dev --extra pdf --extra ml`, then pytest / ruff check /
@@ -569,7 +588,24 @@ and now partly superseded.** `numpy` is still declared and still imported
 nowhere directly, but Phase 8 made it a genuine transitive requirement of the
 `ml` extra (scikit-learn), so removing the direct declaration is now cosmetic
 rather than a real dependency reduction. `pandas` remains core while used only
-by `scripts/`. Both remain open, both are hygiene.
+by `scripts/`. ~~Both remain open, both are hygiene.~~
+
+> **Closed 2026-09-19 (Phase 19) — the recommendation is void, because its
+> premise is no longer true.** Re-deriving the imports for
+> [architecture.md](architecture.md) found that **both libraries are now
+> imported directly by the library itself**, not only by `scripts/`:
+>
+> | Library | Direct imports in `src/credit_risk_copilot/` | Arrived in |
+> |---|---|---|
+> | `numpy` | `explain/adapters.py`, `explain/local.py`, `modeling/metrics.py`, `modeling/model.py` | Phases 8–9 |
+> | `pandas` | `workspace/build.py` | Phase 14 |
+>
+> So each is a correctly declared core dependency and **dropping either would
+> now break the package.** Acting on this recommendation at any point after
+> Phase 9 would have been a regression. Recorded rather than deleted, because
+> a dependency-hygiene note that goes stale while sitting in a table is worth
+> knowing about: the finding was accurate when written and wrong within two
+> phases.
 
 **M-3 · Add an analysis window to `analyze_financial_health`** (F-2) — ✅
 **done** ([D-024](decision_log.md), `tests/test_health_window.py`).

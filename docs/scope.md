@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 — Phase 1 |
-| **Date** | 2026-09-13 |
-| **Related** | [product_requirements.md](product_requirements.md) · [decision_log.md](decision_log.md) · [roadmap.md](roadmap.md) |
+| **Status** | v1.0 — written in Phase 1, amended through Phase 19. The MVP in §3 is built; the non-goals in §5 all held |
+| **Date** | 2026-09-19 (created 2026-09-13) |
+| **Related** | [product_requirements.md](product_requirements.md) · [decision_log.md](decision_log.md) · [roadmap.md](roadmap.md) · [measured_results.md](measured_results.md) |
 
 ---
 
@@ -42,12 +42,12 @@ defined and tested in Phase 5/7.
 | Parsing & normalisation | Canonical schema, aliases, units, signs/parentheses, multiple years, validation | 5 |
 | Ratio engine | Liquidity, leverage, profitability, coverage, cash-flow ratios with explicit statuses | 6 |
 | Financial health | Deterministic flags + trends + reasons; configurable thresholds | 7 |
-| ML | Logistic regression baseline, out-of-time evaluation, calibration, SHAP explanations | 8–9 |
+| ML | Logistic regression baseline, out-of-time evaluation, calibration, ~~SHAP explanations~~ **attribution chosen per model family** ([D-030](decision_log.md): SHAP was measured as *unnecessary* for the linear model, which an exact closed form reconstructs to 3.6e-15, and is used only for the tree model where no closed form exists) | 8–9 |
 | NLP | Risk signals from MD&A / Risk Factors with verbatim evidence; rules/classical methods first | 10 |
 | Combination | Unified assessment representation; contradiction rules | 11 |
 | Synthesis | One grounded LLM call with structured output and code-based grounding validation | 12 |
 | Review | Approve / modify / reject; immutable drafts; review history | 13 |
-| Persistence | SQLite, append-only assessment and review history | 13/15 (moved earlier — [D-009](decision_log.md)) |
+| Persistence | SQLite, append-only assessment and review history | 13 (moved earlier by [D-009](decision_log.md); ~~15~~ merged into 13 by [D-045](decision_log.md)) |
 | UI | Watchlist + company view organised around the five analyst questions | 14 |
 | Demo | Historical replay ("as of" date) on a small watchlist | 11–14 (should-have) |
 
@@ -56,7 +56,7 @@ defined and tested in Phase 5/7.
 - Quarterly (10-Q) monitoring and trailing-twelve-month metrics
 - Scanned PDF / OCR extraction
 - Earnings call transcripts (subject to licensing)
-- News, market data, credit-rating inputs via an adapter layer (Phase 16)
+- News, market data, credit-rating inputs via an adapter layer (~~Phase 16~~ — **cut**, [D-045](decision_log.md); reinstate on a real need rather than to complete a table)
 - Filing-behaviour signals (late filings, auditor changes, going-concern language)
 - Industry-aware benchmarks and thresholds
 - Covenant tracking against analyst-entered covenant terms
@@ -84,5 +84,23 @@ These are **explicitly excluded**, not merely deferred:
 - Watchlist of roughly 10–25 companies, deliberately including companies that
   later experienced distress, so historical replay can show whether warning
   signs were visible *before* the event using only then-available filings.
-- Demo companies are chosen in Phase 3 and must be **excluded from any model
-  training data** (or held out by time) so the demo is not a leaked success story.
+- ~~Demo companies are chosen in Phase 3 and must be **excluded from any model
+  training data** (or held out by time) so the demo is not a leaked success
+  story.~~
+
+> **Not done, and reported rather than quietly dropped (Phase 19).** The
+> workspace runs on **163 companies drawn from the labelled Phase 11 corpus**,
+> which is built from the same event and comparison cohorts the model trained
+> on ([workspace_ui.md §6](workspace_ui.md)). No demo hold-out was ever
+> constructed. [R-13](risks.md) named this risk in Phase 1, assigned it to
+> Phases 3 and 8, and it was not taken up in either.
+>
+> **What this does and does not invalidate.** Every model score shown in the
+> workspace comes from the walk-forward evaluation, where each row was scored
+> by a fold that never saw it or anything after it — so the displayed rankings
+> are out-of-fold, not in-sample fits. What is missing is a cohort the
+> *sampling design* never touched. So the workspace demonstrates the pipeline
+> end to end on real filings; it does not demonstrate generalisation to a
+> portfolio drawn differently. Stated wherever the demo is described
+> ([measured_results.md §5](measured_results.md)), and the honest fix is a
+> held-out watchlist, which is a future phase's work.

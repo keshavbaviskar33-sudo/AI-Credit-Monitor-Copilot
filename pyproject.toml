@@ -72,9 +72,24 @@ mypy_path = "src"
 packages = ["credit_risk_copilot"]
 strict = true
 warn_unused_ignores = true
-# Third-party libraries without bundled type stubs.
+# Third-party libraries without bundled type stubs, plus the optional-extra
+# SDKs that are legitimately absent in an environment that installed neither
+# `llm` nor `ui`. `anthropic` is imported inside a constructor that raises a
+# `SynthesisError` when it is missing (D-043), so its absence is a handled
+# runtime state rather than a type error; `pandas` publishes stubs in a
+# separate distribution this project does not depend on (D-057).
 [[tool.mypy.overrides]]
-module = ["shap.*", "pdfplumber.*", "pymupdf.*", "fitz.*", "lxml.*", "sklearn.*", "joblib.*"]
+module = [
+    "shap.*",
+    "pdfplumber.*",
+    "pymupdf.*",
+    "fitz.*",
+    "lxml.*",
+    "sklearn.*",
+    "joblib.*",
+    "anthropic.*",
+    "pandas.*",
+]
 ignore_missing_imports = true
 
 # pymupdf ships no annotations, so every Story/DocumentWriter call reads as

@@ -81,9 +81,21 @@ tag-priority problem affecting 17 companies (§9).
 **Is the predictive layer a trustworthy foundation for Phase 10+?** The
 *explanation layer* is — tested, traced to filings, and stable. The *model's
 pooled metrics* are not, and three separate sampling constructions failed to
-make them so. The **within-event-cohort** figures (logistic 0.733, boosting
-0.787) remain the only defensible performance claim the project can make.
+make them so. ~~The **within-event-cohort** figures (logistic 0.733, boosting
+0.787) remain the only defensible performance claim the project can make.~~
 §14 lists what has to change, in order.
+
+> **Amended 2026-09-19, Phase 17 ([D-054](decision_log.md)) — the struck
+> sentence is out of date, and only for the logistic model.** A *fourth*
+> construction was tried, the one §13.3 and §14 named: matching the negative
+> universe on BRD's own eligibility rule rather than on a size distribution.
+> The logistic model's confound closes there — ROC-AUC **0.817 [0.778, 0.851]**
+> against cohort separability **0.817**, a gap of +0.0001 — so a pooled figure
+> *is* now defensible as bankruptcy discrimination, with its population named.
+> **Boosting's gap does not move** (+0.021 → +0.021), so every boosting figure
+> on every panel stays uninterpretable. The within-event-cohort figures remain
+> valid and answer a narrower question. §13.4 and §14.3 carry the full
+> accounting; the claim to quote is in [measured_results.md](measured_results.md).
 
 ## 2. What was analysed
 
@@ -480,9 +492,24 @@ calibrated. It is also the model whose advantage is concentrated exactly where
 the confound is largest, whose dominant feature is the confound's own marker,
 and whose explanation drifts toward that marker over time.
 
-**The primary stays primary** — but on the evidence above, not by default, and
+~~**The primary stays primary** — but on the evidence above, not by default, and
 the gap is explicitly *not* a reason to promote the challenger until §7's
-re-measurement says what survives a point-in-time cohort.
+re-measurement says what survives a point-in-time cohort.~~
+
+> **Superseded in Phase 10 ([D-034](decision_log.md)) — the condition this
+> paragraph set was met, and it reversed the conclusion.** The test it named
+> was run: a *paired*, company-clustered comparison inside the event cohort,
+> where the confound cannot operate. Boosting's lead survives there
+> (**+0.054 [0.016, 0.091]**) and survives with the `scale` features removed
+> (**+0.044 [0.008, 0.080]**) — every interval excluding zero. Permutation
+> importance inside that cohort also reverses this section's second objection
+> outright: boosting's leading features there are leverage, profitability and
+> liquidity, while three of the *logistic* model's top seven are missingness
+> indicators. **`gradient_boosting_all` is the primary model.** What survives
+> from the paragraph above is the narrower claim, and it still holds: boosting's
+> separability gap is real, it does not close under eligibility matching
+> (+0.021 → +0.021), and its **pooled figures remain unquotable** as credit
+> discrimination on every panel ([§14.3](#143-which-metrics-may-be-quoted)).
 
 ## 13. Point-in-time results — a negative result, and what it redirects
 
@@ -557,13 +584,69 @@ and more useful result than the one the plan anticipated:
   filer population reproduces.
 - **Phase 8's pooled figures remain uninterpretable as bankruptcy-prediction
   performance**, and now demonstrably so rather than as a caveat.
-- **The within-event-cohort measurement is still the only defensible one.**
+- ~~**The within-event-cohort measurement is still the only defensible one.**~~
   Phase 8 §7.4: logistic 0.733, boosting 0.787, against a 12.3% base rate, with
   cohort membership constant and therefore carrying no information.
+  **Superseded for the logistic model by §13.4** — eligibility matching, the
+  successor this section named, produced a defensible *pooled* figure. The
+  within-cohort numbers are still valid and still answer a narrower question.
 
 The point-in-time universe itself is not wasted: it is correct, cheap to
 rebuild, and a prerequisite for the eligibility-matched design §14 recommends.
 It simply is not sufficient on its own.
+
+### 13.4 The eligibility-matched design, built in Phase 17 — and it works
+
+> **Added 2026-09-19 ([D-054](decision_log.md)).** §13.3 said the confound
+> cannot be fixed by re-sampling alone and pointed at an eligibility-matched
+> design. Phase 17 built it. **For the logistic model the confound closes.**
+
+The rule comes from BRD rather than from the event cohort: total assets of at
+least **$100M in 1980 dollars**, CPI-adjusted per row-year ($260M in 2009,
+$314M in 2020), and — decisively — applied to **both** cohorts, so 125 event
+rows were dropped too. §13.2's size matching kept every event row, which
+preserves the asymmetry that *is* the confound.
+
+| | Event median log-assets | Comparison | Gap |
+|---|---:|---:|---:|
+| Point-in-time | 21.24 | 18.56 | **14.53×** |
+| **Eligibility-matched** | 21.30 | 21.34 | **0.96×** |
+
+| | Unmatched PIT | Size-matched | **Eligibility-matched** |
+|---|---:|---:|---:|
+| Rows / events | 3,933 / 183 | 2,363 / 183 | **2,399 / 179** |
+| Base rate | 4.9% | 8.3% | **8.1%** |
+| Logistic bankruptcy ROC-AUC | 0.797 | 0.781 | **0.817 [0.778, 0.851]** |
+| Logistic cohort separability | 0.843 | 0.819 | **0.817** |
+| **Separability − bankruptcy (logistic)** | +0.047 | +0.038 | **+0.0001** |
+| Boosting bankruptcy ROC-AUC | 0.894 | 0.843 | **0.839 [0.807, 0.867]** |
+| Boosting cohort separability | 0.916 | 0.878 | **0.860** |
+| **Separability − bankruptcy (boosting)** | +0.021 | +0.035 | **+0.021** |
+
+Two results, and they differ by model family:
+
+- **The logistic model's gap closes to +0.0001**, and its discrimination
+  *rises* (0.797 → 0.817) while the probe falls. This is the first figure in
+  the project that a model of the sampling design does not match or beat, so
+  **`0.817 [0.778, 0.851]` is quotable as bankruptcy discrimination** in a way
+  no earlier pooled number was.
+- **Boosting's gap does not move** (+0.021 → +0.021) while its AUC falls to
+  0.839. Its pooled metrics stay uninterpretable — which is exactly what
+  [D-028](decision_log.md)(a) predicted and [D-034](decision_log.md) confirmed
+  by a different route.
+
+This is **not** a paired comparison of the two families, so it does not reopen
+D-034's primary-model choice; that rests on a paired, company-clustered
+within-cohort test. The within-event-cohort figures (0.733 / 0.787) remain
+valid and answer a narrower question — "among companies BRD recorded, which
+failed" — where eligibility matching answers the monitoring question, "among
+companies that *could* have been recorded, which failed".
+
+What is still unmatched is **industry** (§6 measured separability at
+0.87–0.95). Adding a second matching dimension to a 932-row comparison cohort
+trades a measured confound for an unmeasured sample-size problem, so Phase 17
+named it rather than taking it. Full account in
+[measurement_debts.md §3](measurement_debts.md).
 
 ## 14. Limitations and recommendations
 
@@ -594,11 +677,18 @@ In order of how much of its behaviour each accounts for:
 
 ### 14.3 Which metrics may be quoted
 
+- **Quotable, confound-free (added Phase 17, §13.4):** the **logistic** model's
+  eligibility-matched **ROC-AUC 0.817 [0.778, 0.851]**, alongside its cohort
+  separability of 0.817 — the probe no longer beats the label, so this one may
+  be called bankruptcy discrimination. The population must still be named: a
+  point-in-time panel restricted to BRD-eligible rows, base rate 8.1%.
 - **Quotable with the population named:** within-event-cohort ROC-AUC
   (0.733 logistic / 0.787 boosting), and alert-rate recall/precision on the
   pooled ranking *provided* the cohort caveat is attached.
-- **Not quotable without heavy caveats:** pooled ROC-AUC 0.803 / 0.887. Never
-  as "bankruptcy prediction accuracy".
+- **Not quotable without heavy caveats:** pooled ROC-AUC 0.803 / 0.887, and
+  **every boosting figure on every panel** — its separability gap survives
+  eligibility matching unchanged (+0.021). Never as "bankruptcy prediction
+  accuracy".
 - **Never quotable:** any probability reading of the score. Calibration slope
   0.326 (0.392 on the point-in-time panel).
 

@@ -45,6 +45,7 @@ from credit_risk_copilot.modeling.dataset import observations_from_rows
 from credit_risk_copilot.modeling.metrics import evaluate
 from credit_risk_copilot.modeling.model import (
     ModelSpec,
+    align_columns,
     build_model_specs,
     design_matrix,
     run_walk_forward,
@@ -102,8 +103,11 @@ def _probe(
             spec.feature_names,
             add_missing_indicators=add_indicators,
         )
-        if x_test.shape[1] != len(names):
-            x_test = np.hstack([x_test, np.zeros((x_test.shape[0], len(names) - x_test.shape[1]))])
+        # Train and test can disagree on indicator width in *either* direction,
+        # because `design_matrix` derives the indicator set from whichever rows
+        # it is handed. This used to pad only, which raised on a panel whose
+        # test rows were the sparser of the two (found in Phase 17).
+        x_test = align_columns(x_test, len(names))
         assert spec.estimator_factory is not None
         estimator = spec.estimator_factory()
         estimator.fit(x_train, labels[train_idx])

@@ -85,6 +85,19 @@ SEVERE_CODES = frozenset(
 )
 
 
+def _optional_str(value: str | float | int | bool | None) -> str | None:
+    """An evidence detail as text, or `None` when it is absent.
+
+    `EvidenceItem.detail` holds mixed scalars, so the obvious shorthand
+    ``value and str(value)`` is wrong in two ways: its type is the union of
+    `str` and every falsy member of the input union, and a detail that is
+    legitimately `0` or `False` comes back as `0` rather than `"0"`. Neither
+    has bitten this project, because no detail key read as text is numeric --
+    which is exactly why it would have gone unnoticed (D-057).
+    """
+    return None if value is None else str(value)
+
+
 # ---------------------------------------------------------------------------
 # The three reads
 
@@ -304,7 +317,7 @@ def narrative_items(assessment: Assessment) -> tuple[NarrativeItem, ...]:
             label=_humanise(str(item.detail.get("code"))),
             assertion=str(item.detail.get("assertion")),
             specificity=str(item.detail.get("specificity")),
-            section=item.detail.get("section_id") and str(item.detail.get("section_id")),
+            section=_optional_str(item.detail.get("section_id")),
             occurrences=int(item.detail.get("occurrences") or 1),
             quote=item.quote,
             evidence_id=item.evidence_id,
@@ -366,7 +379,9 @@ def ratio_series(
 ) -> tuple[RatioSeries, ...]:
     rows = _panel_rows(panel, cik, as_of)
     directions = {
-        item.detail.get("ratio_id") or _ratio_of(item): item.detail.get("economic_direction")
+        str(item.detail.get("ratio_id") or _ratio_of(item)): _optional_str(
+            item.detail.get("economic_direction")
+        )
         for item in assessment.of_kind(EvidenceKind.RATIO_TREND)
     }
     out: list[RatioSeries] = []
@@ -472,7 +487,7 @@ def build_workspace(
     if scores:
         raw = scores[0].detail.get("score_percentile")
         percentile = float(raw) if isinstance(raw, (int, float)) else None
-        model_name = scores[0].detail.get("model_name") and str(scores[0].detail["model_name"])
+        model_name = _optional_str(scores[0].detail.get("model_name"))
 
     latest_scale, scale_hist = scale_history(panel, cik=assessment.cik, as_of=assessment.as_of)
     return CompanyWorkspace(

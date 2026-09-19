@@ -147,7 +147,8 @@ renders blank, never zero.
 
 ## 8. Verification
 
-- **754 tests pass.** 18 of them cover the workspace view models directly,
+- **754 tests pass** at the close of this phase (**758** as of Phase 19). 18 of
+  them cover the workspace view models directly,
   including one that asserts no field named `score`, `confidence`, `rating` or
   `severity` exists on the objects the page renders — the combined score
   cannot reappear as a widget without failing a test.

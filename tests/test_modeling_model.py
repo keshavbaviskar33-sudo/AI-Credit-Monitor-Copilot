@@ -16,6 +16,7 @@ from credit_risk_copilot.modeling.contract import Observation, ObservationKey, O
 from credit_risk_copilot.modeling.features import FAMILY_ORDER
 from credit_risk_copilot.modeling.model import (
     ModelSpec,
+    align_columns,
     build_model_specs,
     design_matrix,
     fit_final_model,
@@ -111,6 +112,46 @@ class TestDesignMatrix:
         observations = [_observation(1, 2015, 1, a=1.0), _observation(2, 2015, 0, a=1.0)]
 
         assert labels_array(observations).tolist() == [1, 0]
+
+
+class TestColumnAlignment:
+    """`design_matrix` derives its indicator columns from the rows it is given,
+    so a train and a test matrix can disagree on width in *either* direction.
+    Only the padding direction was handled in one caller, which raised on the
+    first panel whose test rows were the sparser of the two."""
+
+    def test_a_narrower_matrix_is_padded_with_not_missing(self) -> None:
+        matrix = np.array([[1.0, 2.0], [3.0, 4.0]])
+
+        widened = align_columns(matrix, 4)
+
+        assert widened.shape == (2, 4)
+        assert widened[:, 2:].tolist() == [[0.0, 0.0], [0.0, 0.0]]
+
+    def test_a_wider_matrix_is_trimmed_rather_than_raising(self) -> None:
+        matrix = np.array([[1.0, 2.0, 3.0, 4.0]])
+
+        narrowed = align_columns(matrix, 2)
+
+        assert narrowed.shape == (1, 2)
+        assert narrowed.tolist() == [[1.0, 2.0]]
+
+    def test_a_matching_width_is_returned_unchanged(self) -> None:
+        matrix = np.array([[1.0, 2.0]])
+
+        assert align_columns(matrix, 2).tolist() == matrix.tolist()
+
+    def test_test_rows_with_more_indicators_than_train_can_be_scored(self) -> None:
+        """The failure as it actually arrived: the training rows all have `b`,
+        so no `b__missing` column exists, while a test row is missing it."""
+        train = [_observation(i, 2015, i % 2, a=1.0, b=2.0) for i in range(1, 5)]
+        test = [_observation(9, 2016, 1, a=1.0, b=None)]
+
+        x_train, names = design_matrix(train, ("a", "b"), add_missing_indicators=True)
+        x_test, test_names = design_matrix(test, ("a", "b"), add_missing_indicators=True)
+
+        assert len(test_names) > len(names)
+        assert align_columns(x_test, x_train.shape[1]).shape[1] == x_train.shape[1]
 
 
 class TestHeuristicScoring:

@@ -39,7 +39,7 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-029](#d-029-explanations-are-a-domain-schema-not-an-attribution-librarys-output) | Explanations are a domain schema, not an attribution library's output | Accepted | 2026-09-18 |
 | [D-030](#d-030-attribution-method-is-chosen-per-model-family-shap-is-not-used-on-the-linear-model) | Attribution method per model family; SHAP not used on the linear model | Accepted | 2026-09-18 |
 | [D-031](#d-031-explanations-lead-with-financial-dimensions-not-feature-rankings) | Explanations lead with financial dimensions, not feature rankings | Accepted | 2026-09-18 |
-| [D-032](#d-032-the-negative-universe-becomes-point-in-time) | The negative universe becomes point-in-time | Accepted | 2026-09-18 |
+| [D-032](#d-032-the-negative-universe-becomes-point-in-time--and-that-is-not-the-confound) | The negative universe becomes point-in-time | Accepted | 2026-09-18 |
 | [D-033](#d-033-the-model-output-is-a-ranking-and-the-schema-says-so) | The model output is a ranking, and the schema says so | Accepted | 2026-09-18 |
 | [D-034](#d-034-gradient-boosting-becomes-the-primary-model-supersedes-d-028s-choice) | Gradient boosting becomes the primary model (supersedes D-028's choice) | Accepted | 2026-09-18 |
 | [D-035](#d-035-narrative-signals-are-gated-on-assertion-not-on-keywords) | Narrative signals are gated on assertion, not on keywords | Accepted | 2026-09-18 |
@@ -60,6 +60,11 @@ a reversed decision gets a new entry that supersedes the old one.
 | [D-050](#d-050-the-workspaces-centrepiece-is-three-independent-reads-not-a-risk-score) | The workspace's centrepiece is three independent reads, not a risk score | Accepted | 2026-09-19 |
 | [D-051](#d-051-the-desk-groups-by-named-reason-it-does-not-rank) | The desk groups by named reason; it does not rank | Accepted | 2026-09-19 |
 | [D-052](#d-052-theme-configuration-over-css-and-links-over-programmatic-page-switching) | Theme configuration over CSS, and links over programmatic page switching | Accepted | 2026-09-19 |
+| [D-053](#d-053-the-health-layer-is-re-run-and-two-of-the-biases-phase-11-declared-were-wrong) | The health layer is re-run, and two of the biases Phase 11 declared were wrong | Accepted | 2026-09-19 |
+| [D-054](#d-054-the-negative-universe-is-matched-on-brds-eligibility-rule-and-the-confound-closes) | The negative universe is matched on BRD's eligibility rule, and the confound closes | Accepted | 2026-09-19 |
+| [D-055](#d-055-recall-is-reported-relative-to-the-sweep-and-the-misses-are-recorded-not-repaired) | Recall is reported relative to the sweep, and the misses are recorded, not repaired | Accepted | 2026-09-19 |
+| [D-056](#d-056-the-front-door-is-three-documents-and-the-audit-is-preserved-rather-than-rewritten) | The front door is three documents, and the audit is preserved rather than rewritten | Accepted | 2026-09-19 |
+| [D-057](#d-057-the-inherited-mypy-errors-were-mostly-real-and-are-fixed-rather-than-suppressed) | The inherited `mypy` errors were mostly real, and are fixed rather than suppressed | Accepted | 2026-09-19 |
 
 ---
 
@@ -545,7 +550,9 @@ A size-matched variant (comparison rows restricted to the event cohort's 10th–
 - **Replace the survivor panel with the point-in-time one as the headline.** Rejected: it is not better, it is differently biased. Both are reported, bracketing the truth — the survivor cohort hides failures among its negatives, the point-in-time cohort includes small failures BRD never recorded.
 - **Keep sampling until the probe comes down.** Rejected as the wrong shape of effort: three constructions were tested and the residual is structural, not a sampling-luck problem.
 
-**Consequences.** The point-in-time universe is retained as infrastructure and is the frame the eligibility-matched design will need, but it does not on its own make pooled metrics interpretable. The **within-event-cohort** measurement remains the only defensible headline (logistic 0.733, boosting 0.787). The concrete next step is no longer "build a point-in-time negative universe" — that is done — but **"match the negative universe on BRD's own eligibility conditions"**, which is a narrower and better-specified problem than the one Phase 8 handed forward.
+**Consequences.** The point-in-time universe is retained as infrastructure and is the frame the eligibility-matched design will need, but it does not on its own make pooled metrics interpretable. ~~The **within-event-cohort** measurement remains the only defensible headline (logistic 0.733, boosting 0.787).~~ The concrete next step is no longer "build a point-in-time negative universe" — that is done — but **"match the negative universe on BRD's own eligibility conditions"**, which is a narrower and better-specified problem than the one Phase 8 handed forward.
+
+**Superseded in part by [D-054](#d-054-the-negative-universe-is-matched-on-brds-eligibility-rule-and-the-confound-closes) (Phase 17).** The next step this entry named was taken, and it worked — for one model family. On the eligibility-matched panel the **logistic** model reaches ROC-AUC **0.817 [0.778, 0.851]** against a cohort separability of **0.817**, so a pooled figure is defensible after all and the struck sentence is out of date. **Boosting's gap is unmoved** (+0.021), so its pooled metrics stay uninterpretable on every panel, and this entry's diagnosis — that the confound is eligibility rather than survival — is what made the fix findable. The within-cohort figures remain valid and answer a narrower question.
 
 ## D-033 The model output is a ranking, and the schema says so
 **Status:** Accepted (delegated to engineering judgement, Phase 9, 2026-09-18) — formalises Phase 8's conclusion; implementation in `explain/schema.py`.
@@ -731,7 +738,7 @@ This is also why `assemble_assessment` requires a `FilingStamp` whenever a healt
 **Measured, not asserted.** All 202 assessments in the phase corpus were re-assembled one day before their filing date and **all 202 were refused**. The gate also caught a leak in this phase's own test fixture before it could reach anything else: the first draft stamped a 2014 assessment with a 2015 filing date, which is exactly the error the gate exists for, appearing in the test that was meant to exercise it.
 
 **Alternatives.**
-- **Trust the callers and document the rule.** Rejected: that is the arrangement that produced the survivorship problem [D-032](#d-032-the-negative-universe-becomes-point-in-time) had to measure its way out of, one layer up.
+- **Trust the callers and document the rule.** Rejected: that is the arrangement that produced the survivorship problem [D-032](#d-032-the-negative-universe-becomes-point-in-time--and-that-is-not-the-confound) had to measure its way out of, one layer up.
 - **Filter silently instead of raising.** Rejected for the assembly path — dropping an item there would hide a layer that over-fetched. `AsOfGate.admissible` exists for callers replaying from a cached superset, and is documented as not what the assembly uses.
 - **Admit undated evidence with a caveat.** Rejected: a caveat on an item that might be from the future is not a point-in-time guarantee, it is a note attached to the absence of one.
 
@@ -901,7 +908,7 @@ It cited the correct evidence item and reproduced 195 characters exactly before 
 **The debts Phase 17 inherits.** These were each named by the phase that deferred them, and they matter more than the three phases being merged or cut:
 
 1. **Phase 11's health layer was reconstructed from the Phase 8 feature encoding, not re-run** ([combined_assessment.md §8](combined_assessment.md)). It biases `DIMENSION_DISAGREEMENT` upward and every health-based corroboration downward. Its own doc calls this the highest-value follow-up.
-2. **[D-032](#d-032-the-negative-universe-becomes-point-in-time)'s named next step was never taken** — matching the negative universe on BRD's *eligibility* conditions rather than on survival. That confound is why pooled model metrics are not quotable as bankruptcy prediction.
+2. **[D-032](#d-032-the-negative-universe-becomes-point-in-time--and-that-is-not-the-confound)'s named next step was never taken** — matching the negative universe on BRD's *eligibility* conditions rather than on survival. That confound is why pooled model metrics are not quotable as bankruptcy prediction.
 3. **The live synthesis sample is 12 drafts from one provider** ([D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope)). The Anthropic client has never made a call, and the provider-neutral prompt now makes a two-model comparison a one-command measurement.
 4. **Phase 10's recall is built but unlabelled** ([nlp_risk_signals.md](nlp_risk_signals.md)). Precision is reported; recall is not.
 5. **Fourteen assumptions remain open**, including A-09 (feature reproducibility), A-11 (bankruptcy as a distress proxy), A-13 (enough events for an out-of-time test) and A-14 (base-rate framing) — the four that decide whether the predictive layer means anything.
@@ -1077,3 +1084,162 @@ Links avoid all three. A link cannot half-work, it survives a reload, and it mak
 - **A React front end over a new HTTP API.** Rejected for this phase: the backend is a Python library with no service layer, so it would mean building and maintaining an API before any of the analyst-facing work could start. The seam is the `workspace` package, which imports no Streamlit and would be the same behind any renderer.
 
 **Consequences.** `src/credit_risk_copilot/workspace/` holds the view models and imports no UI framework, so what the screen is allowed to say is unit-tested without a browser — 18 tests, including the one that keeps the combined score from reappearing. `app_pages/` holds Streamlit and does no derivation. Replacing the renderer later means rewriting `app_pages/` and keeping everything that decides what is true.
+
+## D-053 The health layer is re-run, and two of the biases Phase 11 declared were wrong
+**Status:** Accepted (delegated to engineering judgement, Phase 17, 2026-09-19) — pays limitation 2 of [combined_assessment.md §8](combined_assessment.md); implementation in `scripts/phase17_health_rerun.py` and `modeling/dataset.py`.
+
+**Context.** Phase 11 did not run Phase 7. It rebuilt each health report from the Phase 8 *feature encoding* of one, because re-running meant re-fetching company facts for 202 filers. That encoding had already collapsed `IMPROVING`, `STABLE` and `MIXED` into one not-deteriorating flag. Phase 11 disclosed the collapse and then made three claims about what it cost: `MODEL_ELEVATED_HEALTH_QUIET` and `DIMENSION_DISAGREEMENT` are biased **upward**, health corroboration **downward**. Its own doc called re-running it the single highest-value follow-up.
+
+**Decision, part 1 — extract the point-in-time loop rather than copy it.** A script that reimplements "re-resolve every filing visible at the cutoff, take `as_of`, run Phases 6 and 7" would be a second copy of the only place the leakage contract is enforced, free to drift from the first. So `modeling/dataset.py` now exposes that loop as `analyse_company_filings`, returning a `FilingAnalysis` per filing, and `build_company_observations` is a thin labelling and encoding layer on top of it. The real reports therefore come from the same code that built the Phase 8 panel, not from a lookalike.
+
+**Decision, part 2 — measure both arms in one process, sharing one fitted model.** The reconstruction arm imports `phase11_assess._health_report` unmodified, so it is the actual code that produced the published numbers rather than a rewrite of it, and the model layer is fitted **once** and shared. Every delta is then caused by the health reports and by nothing else — not a reseeded bootstrap, not a refitted estimator, not a different corpus draw.
+
+**What it found. The faithfulness claim was exactly right and the consequence claims were not.** All 202 filings produced a real report. On the distinction Phase 11 said survived the round trip, it survived perfectly: `deteriorating -> deteriorating` 522 of 522, `insufficient_data -> insufficient_data` 122 of 122, **zero errors**. Every disagreement is inside the collapsed class — 242 dimensions were really `IMPROVING` and **96 were really `MIXED`**, and both read as `STABLE`.
+
+Then the three stated biases:
+
+| Claim | Verdict |
+|---|---|
+| `MODEL_ELEVATED_HEALTH_QUIET` biased upward | **Vacuous.** It fires 0 times in both arms and both cohorts. An upper bound on zero. |
+| `DIMENSION_DISAGREEMENT` biased upward | **Backwards.** 102 firings reconstructed, **110** real; comparison cohort 65 → 74. |
+| Health corroboration biased downward | **Right about the count, silent about what mattered.** |
+
+`DIMENSION_DISAGREEMENT` went the other way because the rule is *symmetric*: it fires whenever a material model driver and the health layer disagree, in either direction. Collapsing `MIXED` to `STABLE` therefore removes some firings (model elevated, health now also elevated) and adds others (model quiet, health now elevated), and on this corpus the second effect is the larger. A bias direction asserted from the shape of an encoding, without running the rule, is a guess.
+
+The corroboration claim is the instructive one. Counts did rise, as predicted — and almost every new firing landed in the **comparison** cohort, so each health-based lift *fell*: `MODEL_AND_HEALTH` 1.538 → 1.444, `HEALTH_AND_NARRATIVE` 2.158 → 2.078. Correcting the bias made the layer look worse, not better.
+
+**One published number changes, and it changes against the layer.** `MODEL_AND_HEALTH` at matched budget was −0.0327 [−0.0645, **0.000**] and is now −0.0318 [−0.0654, **−0.0058**]. The interval no longer touches zero: spending an alert budget on model-and-health agreement is now *measurably* worse than spending it on the model's own top-k, which the reconstruction could not establish.
+
+**Everything that does not touch health is bit-identical**, which is the check that the harness is measuring what it claims: all three single-layer baselines, `ALL_LAYERS_ELEVATED` (0.930, overlap 0.63), `MODEL_AND_NARRATIVE` (+0.026 [−0.056, +0.122]), `NARRATIVE_SELF_CONTRADICTION` (2.04x) and `ABSENCE_NOT_OBSERVED` (1.50) are unchanged to four decimals.
+
+**Alternatives.**
+- **Leave it as a disclosed limitation.** Rejected: the limitation was disclosed *with a direction attached*, and two of the three directions were wrong. A disclosure that is itself unmeasured is not a smaller claim, it is a different one.
+- **Re-run Phase 7 inside `phase11_assess.py` and republish.** Rejected: it would overwrite the reconstruction arm, and the comparison between the two *is* the deliverable.
+- **Rebuild the Phase 8 features so the encoding keeps all five statuses.** Rejected as out of scope and probably wrong anyway: `dim_deteriorating_*` is a model feature, and a five-level categorical would change the panel, the model and every published metric to fix a reporting artefact in a different phase.
+
+**Consequences.** Phase 11's headline — combining does not improve the ranking — stands unchanged, and its central negative is now one interval stronger. `analyse_company_filings` is the supported way to obtain real Phase 7 output for a filing, so no later phase has a reason to reconstruct one again. And the generalisable lesson is the same one [D-032](#d-032-the-negative-universe-becomes-point-in-time--and-that-is-not-the-confound) taught about survivorship: **a bias this project can name is not a bias this project has measured**, and stating the direction confidently is how an unmeasured guess acquires the authority of a result.
+
+## D-054 The negative universe is matched on BRD's eligibility rule, and the confound closes
+**Status:** Accepted (delegated to engineering judgement, Phase 17, 2026-09-19) — takes the next step [D-032](#d-032-the-negative-universe-becomes-point-in-time--and-that-is-not-the-confound) named; implementation in `scripts/phase17_eligibility_matched.py`.
+
+**Context.** D-032 built the point-in-time negative universe Phase 8 had deferred, found it changed nothing, and diagnosed why: the confound is **eligibility, not survival**. BRD records only large public bankruptcies, so the event cohort is large by construction, and a comparison cohort drawn from the real filer population is dominated by companies BRD could never have recorded whatever happened to them. D-032 closed by naming its successor: "match the negative universe on BRD's own eligibility conditions".
+
+**Decision.** Apply BRD's published inclusion rule as a row-level predicate on the point-in-time panel: total assets of at least **$100M in 1980 dollars**, CPI-adjusted to each row's own year ($260M in 2009 rising to $314M in 2020).
+
+BRD's second condition — a 10-K filed within roughly three years before the petition — is **not implemented, because it is vacuous here**, and saying so is better than quietly skipping it: every row in this panel *is* an annual filing, so the counterfactual "had this company filed a petition on this date, would it have filed a 10-K within the previous three years?" is true by construction. Only size binds.
+
+**Two differences from Phase 9's size-matching, and both are the point.**
+
+1. **The threshold comes from BRD, not from the event cohort.** Phase 9 kept comparison rows inside the event cohort's own 10th–90th percentile band. That is a distribution match, and it makes the control group resemble the treatment group by construction — so it cannot distinguish "the cohorts differ in size" from "the cohorts differ in what made them cohorts".
+2. **It is applied symmetrically.** Phase 9 kept every event row, so an event row below the band survived while a comparison row below the band was dropped — and the asymmetry that *is* the confound survived the correction. Eligibility is a property a row either has or has not, so it is applied to both cohorts, and **125 event rows were dropped too**. That is what "matched on eligibility" has to mean if it is to mean anything.
+
+**What it found.** Comparison rows 2,341 → 932; event rows 1,592 → 1,467; 102 rows dropped for having no resolved total assets, because a row that cannot be shown to meet the bar must not be assumed to.
+
+| | Event median log-assets | Comparison | Gap |
+|---|---:|---:|---:|
+| Point-in-time (D-032) | 21.24 | 18.56 | **14.53x** |
+| Eligibility-matched | 21.30 | 21.34 | **0.96x** |
+
+The size gap does not narrow, it **closes** — the comparison cohort ends up fractionally the larger of the two. And the probe follows it:
+
+| | Bankruptcy ROC-AUC | Cohort separability | Gap |
+|---|---:|---:|---:|
+| Point-in-time, logistic | 0.797 [0.754, 0.838] | 0.843 | +0.047 |
+| Size-matched, logistic | 0.781 [0.735, 0.825] | 0.819 | +0.038 |
+| **Eligibility-matched, logistic** | **0.817 [0.778, 0.851]** | **0.817** | **+0.0001** |
+| Point-in-time, boosting | 0.894 [0.864, 0.921] | 0.916 | +0.021 |
+| **Eligibility-matched, boosting** | 0.839 [0.807, 0.867] | 0.860 | +0.021 |
+
+**For the logistic model the confound is gone**, and its discrimination *rose* while the probe fell — the first bankruptcy figure this project has produced that is not matched or beaten by a model of its own sampling design. **For boosting the gap does not move at all** (+0.021 → +0.021) while its AUC falls 0.894 → 0.839, which is exactly the pattern [D-028](#d-028-model-family-regularised-logistic-hazard-as-primary-gradient-boosting-as-comparator)(a) predicted and [D-034](#d-034-gradient-boosting-becomes-the-primary-model-supersedes-d-028s-choice) tested a different way: boosting's lead is largest where the confound is largest.
+
+**This does not reopen D-034.** These are two independent walk-forward runs on one panel, not a paired, company-clustered comparison of the difference, so the 0.022 that still separates them here is not a measurement of a difference. D-034's paired within-cohort test (+0.054 [0.016, 0.091], and +0.044 [0.008, 0.080] size-blind) remains the basis for the primary-model choice, and a paired re-run on this panel is the obvious next test rather than a conclusion available now.
+
+**Alternatives.**
+- **Keep quoting the within-event-cohort figures (0.733 / 0.787).** Rejected as the *only* headline, kept as a second one: within-cohort neutralises the confound by conditioning it away and answers a narrower question ("among companies BRD recorded, which failed"). Eligibility matching answers the monitoring question ("among companies that could have been recorded, which failed") and is the one an analyst faces.
+- **Match on industry as well as size.** Rejected for now: D-032 measured industry separability at 0.87–0.95, so it is a real candidate, but adding a second matching dimension to a 932-row comparison cohort trades a measured confound for an unmeasured sample-size problem. It is named as the next step, not taken.
+- **Use the empirical size band and call it eligibility.** Rejected — that is Phase 9's experiment, it is already reported, and the distinction between a rule and a distribution match is the reason this one worked.
+
+**Consequences.** The defensible headline for the logistic hazard model becomes **ROC-AUC 0.817 [0.778, 0.851] on an eligibility-matched point-in-time panel with cohort separability 0.817**. Boosting's *pooled* metrics remain unquotable as bankruptcy prediction on any of the three panels. The eligibility predicate is cheap and reusable, so any later re-measurement should run on this frame rather than on the raw point-in-time one.
+
+**A latent bug was found and fixed on the way.** Phase 9's cohort probe built its train and test design matrices independently and then padded the test matrix to the training width. `design_matrix` derives its missingness-indicator columns from whichever rows it is handed, so the two can disagree in **either** direction — and the first panel whose test rows were the sparser of the two raised `negative dimensions are not allowed`. The library already had a correct pad-or-trim helper used by the real training path; it is now public (`model.align_columns`), the probe uses it, and four tests cover both directions. Phase 9's published numbers are unaffected and were reproduced to four decimals in the same run.
+
+## D-055 Recall is reported relative to the sweep, and the misses are recorded, not repaired
+**Status:** Accepted (delegated to engineering judgement, Phase 17, 2026-09-19) — pays limitation 1 of [nlp_risk_signals.md §10](nlp_risk_signals.md); labels in `evaluation/phase10_recall_labels.csv`, measurement in `scripts/phase17_recall.py`.
+
+**Context.** Phase 10 reported precision (73.4%) and refused to report recall. It had built the harness — an over-broad keyword sweep emitting 150 candidates, each carrying the catalog's own verdict — and left the pool unlabelled, on the grounds that "quoting a recall figure from a handful of rows would be worse than quoting none". Its own §10 called this the largest gap in the phase.
+
+**Decision, part 1 — label the pool and report the number with its qualifier attached.** All 150 rows are labelled `true_signal`, `boilerplate` or `unrelated`, with a note on every judgement call. The labelling rule is stated so it can be disagreed with: `true_signal` means the sentence *asserts* the condition its code names, about this filer. Hypotheticals, definitions, accounting policies, negations and other companies' distress are not instances — because [D-035](#d-035-narrative-signals-are-gated-on-assertion-not-on-keywords) built the catalog to exclude them, so counting them would score the layer against a target it was designed not to hit.
+
+The qualifier is not decoration. The denominator is the true instances **the sweep found**, and the sweep is bare topic keywords. A disclosure phrased in words neither matcher contains is invisible to both. So this is recall *relative to the sweep's reach*, an upper bound on true recall, and it is never to be quoted without that clause.
+
+**Decision, part 2 — do not repair the catalog first.** The misses are recorded and left in place, exactly as Phase 10 did with its 17 precision failures and for the same reason: a repaired catalog would leave the reported figure describing something that was never shipped.
+
+**What it found. 8 of 21 true instances — recall 38.1% [20.8%, 59.1%].**
+
+Three things matter more than the headline:
+
+- **The misses are concentrated and inconsistent.** 16 of the 21 true instances are `asset_impairment`, of which 6 were caught. And the pattern set disagrees with itself: two sentences reporting an impairment charge's effect on the effective tax rate were caught, while "*Excluding the $2.1 billion non-cash, pre-tax goodwill impairment charge recorded during 2011*, our operating expenses increased..." was not. These are one editable line apart, which is the property a rules layer is for.
+- **The pool independently confirms precision: 8 of 8.** Every row the catalog claimed, the labeller agreed with — and this pool was generated by a *different* matcher, so it is not the Phase 10 precision sample re-scored.
+- **Six of twelve codes have zero true instances in the pool, including `bankruptcy_contemplated` and `delisting_notice`.** The sweep drew 150 candidates from topics that are mostly boilerplate (43 impairment, 23 liquidity, 22 covenant) and almost nothing from the statutory disclosures that actually carry lift. **So the pool cannot speak about two of the three highest-lift codes**, and 38.1% is substantially a statement about impairment detection wearing the catalog's name.
+
+**Alternatives.**
+- **Fix the impairment patterns, then measure.** Rejected: see part 2. The fixes are cheap and can be made in a later phase against a fresh draw.
+- **Draw a larger pool weighted towards the high-lift codes.** Rejected for this phase, recommended for the next: it is the right fix for the third finding above, and it needs a re-run of the sweep over 238 filings rather than a relabelling.
+- **Report recall per code only, with no headline.** Rejected: the per-code cells run to single-digit denominators, and suppressing the pooled figure while publishing twelve noisier ones is not more honest, only less legible. Both are reported, each with a Wilson interval.
+
+**Consequences.** [A-15](assumptions.md) keeps its "precision is concentrated where it matters" verdict and gains a measured recall with a named blind spot. `nlp_risk_signals.md` limitation 1 is replaced by limitation 1': recall is measured at 38.1% relative to the sweep, and the pool is too thin on the high-lift codes to characterise them.
+
+## D-056 The front door is three documents, and the audit is preserved rather than rewritten
+**Status:** Accepted (project owner, Phase 19, 2026-09-19) — implementation in [architecture.md](architecture.md), [measured_results.md](measured_results.md), [explaining_the_project.md](explaining_the_project.md) and a rewritten `README.md`.
+
+**Context.** Phase 19's test is stated in the project owner's own words: *"to know actually what the project does and how to explain the project to anyone"*. Concretely — a competent engineer who has never seen the repo can read the top-level docs and correctly explain what it does, why it is built that way, and what it has proven, without overclaiming.
+
+Twenty-four documents in `docs/` failed that test, not because any of them is bad but because none of them is the front door. The `README.md` said "Phase 14 of 20" and carried a per-phase changelog duplicating `roadmap.md`. The one architecture document was a *dated Phase 1–7 build-vs-buy audit* describing eight packages when there are eleven. And the numbers a reader most needs — the ones that may and may not be quoted — were correct but distributed across thirteen phase reports, each stating its figures in its own frame.
+
+**Decision.** Four documents, with the audiences deliberately separated.
+
+- **`README.md`** — what it is, who it is for, the pipeline, how to run it, the headline measured results, the limitations, in that order, readable in five minutes. It no longer narrates the phase history; that is [roadmap.md](roadmap.md)'s job, and duplicating it is how two accounts drift.
+- **`docs/architecture.md`** — the current-state architecture, structured around **nine boundaries and what each one buys**, with the cost of breaking each one named. The import graph was re-derived from the code for it rather than taken from the earlier audit, which is how its §2 came to say "two symbols" where the audit said one, and how M-2's premise was found to have expired.
+- **`docs/measured_results.md`** — every defensible figure with its population and caveat attached, in three tiers: quotable, quotable only with the population named, not quotable. Negative results are rows in it, not footnotes.
+- **`docs/explaining_the_project.md`** — the material [D-045](#d-045-the-remaining-eight-phases-become-four) merged in from the old Phase 20. A different audience and a different voice from a numbers register: the sixty-second version, the five-minute version, the four hardest questions with their honest answers, and a table of things not to say.
+
+**`architecture_audit.md` is preserved, not rewritten.** The brief permitted rewriting it into the architecture document; [D-009](#d-009-roadmap-amendments)'s convention — amend, never silently rewrite — points the other way. Two things settle it. Its reasoning about what was considered and rejected as a dependency does not expire, and it contains its own §F-1: the finding that the multi-filing point-in-time path was built, unit-tested, exported and **never executed against real data**, which is why two phases of quality numbers had to be re-measured. Folding that into a current-state document would either lose it or put it somewhere it does not belong. It gets a status header naming it historical and pointing forward.
+
+**Alternatives.**
+- **One document.** Rejected: the numbers register and the explanation narrative have different readers, and merging them produces a reference table nobody can read aloud and a script nobody can check.
+- **Rewrite the audit into the architecture doc.** Rejected above, and it is the option that quietly discards the most interesting failure the project recorded about itself.
+- **Leave the README as a phase changelog pointing at the roadmap.** Rejected: a front door that opens onto a status table answers "how far along is this" when the question is "what is this".
+
+**Consequences.** The consistency pass this decision sits inside found twelve stale or contradictory claims, and two of them mattered. **Five places across two documents still said the within-event-cohort figures were "the only defensible performance claim the project can make"** — true when written, and superseded by [D-054](#d-054-the-negative-universe-is-matched-on-brds-eligibility-rule-and-the-confound-closes) for the logistic model only, which is the single easiest thing in this project to state wrongly. And **[scope.md](scope.md) §6's promise that demo companies would be held out of training was never kept**: the workspace runs on 163 companies from the labelled corpus, which is [R-13](risks.md) materialising unnoticed. It is now stated wherever the demo is described, with what it does and does not invalidate — every displayed model score is out-of-fold by construction (`scripts/phase11_assess.py::_out_of_fold`), so it is a demonstration of the pipeline rather than of generalisation.
+
+Six assumptions were also closed (A-04, A-05, A-08, A-12, A-19, A-21). None needed new measurement: each had a validation plan an earlier phase executed and nobody wrote back. A-12 is the instructive one — logistic regression was validated as a useful, explainable baseline, *and* demoted from primary by [D-034](#d-034-gradient-boosting-becomes-the-primary-model-supersedes-d-028s-choice), *and* is the model carrying the project's one quotable bankruptcy figure. Three outcomes, none of which the assumption anticipated.
+
+## D-057 The inherited `mypy` errors were mostly real, and are fixed rather than suppressed
+**Status:** Accepted (delegated to engineering judgement, Phase 19, 2026-09-19) — clears limitation 8 of [measurement_debts.md §8](measurement_debts.md); implementation in `assessment/models.py`, `assessment/evidence.py`, `synthesis/prompt.py`, `synthesis/client.py`, `workspace/build.py`, `pyproject.toml`.
+
+**Context.** Phase 17 left 17 `mypy --strict` errors across five files and described them as "all in optional-dependency paths". Phase 19 could fix them or consciously decline. Declining needs a reason, so the first step was reading them rather than inheriting the description.
+
+**The description was wrong. Only 2 of the 17 were optional-dependency noise.** The other 15 were ordinary typing defects that had accumulated because the errors were being counted rather than read.
+
+| Class | n | What it was |
+|---|---:|---|
+| Bare generics (`dict`, `list`) | 4 | `RESPONSE_SCHEMA: dict`, `SynthesisRequest.schema`, `render_anthropic -> dict`, a `list` of signals |
+| `value and str(value)` | 3 | In `workspace/build.py`. Its type is `str` unioned with every *falsy* member of the input, and a detail that is legitimately `0` comes back as `0` rather than `"0"` |
+| A loop variable reused across two types | 2 | `prompt._render_findings` bound `finding` to a `ContradictionFinding` and then to a `CorroborationFinding`, so `finding.supporting` typechecked against the wrong class |
+| `**{...}` unpacked into a typed signature | 4 | `genai.Client(**({"api_key": k} if k else {}))` — unpacking erases the keyword's type, so a misspelt argument name would reach the SDK unchecked |
+| Missing parameter / return annotation | 2 | `validate_citations(evidence_ids: object)`, `GeminiSynthesisClient.render` |
+| **Genuinely an absent library** | **2** | `import anthropic` (the `llm` extra, uninstalled) and `pandas` (stubs ship in a separate distribution) |
+
+**Decision.** Fix the 15. Route the 2 to the `[[tool.mypy.overrides]]` block that **already existed in `pyproject.toml` for exactly this class** of library — `shap`, `pdfplumber`, `pymupdf`, `lxml`, `sklearn` — so the treatment is the established one rather than a new exception. `anthropic`'s absence is a *handled runtime state*: it is imported inside a constructor that raises `SynthesisError` when it is missing, which [D-043](#d-043-the-model-provider-lives-behind-one-seam-and-the-phase-is-measured-without-it) designed deliberately. A type checker reporting that as an error is reporting the design.
+
+No `# type: ignore` was added anywhere. The distinction matters: an override says "this library has no stubs", which is a fact about the library; an ignore says "this line is wrong and I am hiding it", which is a fact about the code.
+
+**Two of the fixes are behaviour, not annotation.** `_optional_str` replaces the `and str(...)` idiom, and the loop-variable rename removes an expression reading a field off the wrong class. Neither has ever produced a wrong output — no detail key read as text is numeric, and the two finding types happen to share their other field names — **which is precisely why both survived six phases.** A defect that cannot currently fire is still a defect, aimed at whoever adds the first numeric detail key.
+
+**Alternatives.**
+- **Leave them and say why.** Rejected once they were read. "Optional-dependency paths" was a reason to defer 2 of them, not 17, and it had been repeated for two phases without anyone checking.
+- **`# type: ignore` on all 17.** Rejected: it converts a measurable count into an invisible one, which is the shape of problem this project spends its time avoiding everywhere else.
+- **Add `pandas-stubs` as a dev dependency.** Rejected for now — it would typecheck one module's dataframe access at the cost of a dependency whose version must track pandas', and `workspace/build.py` is the only consumer. Reconsider if a second module takes a pandas dependency.
+- **Drop `anthropic` since it has never made a call.** Rejected, and not on sentiment: [D-044](#d-044-a-second-provider-and-the-prompt-leaves-the-vendors-envelope) kept it as the comparator for the one measurement debt this project still owes, and deleting the thing the debt is owed *on* would close the debt by making it unpayable.
+
+**Consequences.** `mypy --strict` is clean on 79 source files, so a future error is a signal rather than the 18th entry in a known list. 758 tests pass unchanged and coverage holds at 94%, which is the check that the fixes were type-level: none altered a code path any test exercises. A duplicated docstring paragraph in `GeminiSynthesisClient` was found and removed on the way.

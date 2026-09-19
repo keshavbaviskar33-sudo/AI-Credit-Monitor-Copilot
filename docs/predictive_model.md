@@ -444,9 +444,9 @@ mean.
    consequence: a model can predict **cohort membership** at 0.792 (logistic)
    and 0.913 (gradient boosting) ROC-AUC — at or above their bankruptcy scores.
    The pooled figures in §7.1 should therefore be read as an upper bound, and
-   §7.4's within-cohort figures (0.733 / 0.787) as the defensible ones. Fixing
-   this needs a point-in-time negative universe — companies that were *filing
-   at time T*, whether or not they still exist.
+   ~~§7.4's within-cohort figures (0.733 / 0.787) as the defensible ones~~.
+   Fixing this needs a point-in-time negative universe — companies that were
+   *filing at time T*, whether or not they still exist.
 
    > **Phase 9 built it and measured the gap this limitation was hiding.** Of
    > the 16,008 companies that filed an annual report between 2009 and 2020,
@@ -457,6 +457,19 @@ mean.
    > `trend_pct_*` features feeding this model are unbounded (to ±42,000),
    > which is much of why calibration fails. See
    > [model_evaluation_explainability.md](model_evaluation_explainability.md).
+   >
+   > **Phase 17 then closed it, for one model family
+   > ([D-054](decision_log.md)).** Neither the point-in-time draw nor Phase 9's
+   > size-matched variant fixed the confound; matching on BRD's own
+   > *eligibility* rule did. On that panel the **logistic** model reaches
+   > **ROC-AUC 0.817 [0.778, 0.851]** against cohort separability **0.817** —
+   > a gap of +0.0001, and the first pooled figure in this project a model of
+   > the sampling design does not beat. So the defensible headline is that one,
+   > with its population named, rather than §7.4's within-cohort figures.
+   > **Gradient boosting's gap is unmoved** (+0.021) while its AUC falls to
+   > 0.839, so its pooled figures stay uninterpretable on every panel.
+   > [measurement_debts.md §3](measurement_debts.md);
+   > [measured_results.md](measured_results.md).
 2. **BRD covers only large public filers.** A `0` means "no *large public*
    bankruptcy was recorded", not "nothing bad happened". The label noise is
    confined to the negative class and is not correctable with the sources this

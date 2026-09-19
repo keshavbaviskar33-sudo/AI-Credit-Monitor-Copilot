@@ -2,17 +2,22 @@
 
 | | |
 |---|---|
-| **Status** | Phase 14 complete — the analyst workspace runs against the real corpus. Two phases remain (17, 19) |
+| **Status** | **Complete.** Phase 19 closed the last phase: the documentation front door, the measured-results register, and the architecture write-up. One measurement debt remains unpaid and is reported as unpaid — it needs a credential, not work |
 | **Date** | 2026-09-19 |
 
 Phases are completed one at a time. Each phase ends with tests/checks, a
 status report and an explicit go-ahead before the next phase starts.
 
-**Two phases remain — 17 and 19.** Phases 15, 16, 18 and 20 were
+**All phases are now complete.** Phases 15, 16, 18 and 20 were
 merged or cut in [D-045](decision_log.md); their rows are kept, and say so,
 because every document here cross-references phases by number and renumbering
 to tidy a table would invalidate the references that make the history
 auditable.
+
+**Where to start reading:** [explaining_the_project.md](explaining_the_project.md)
+for what this is and how to describe it · [measured_results.md](measured_results.md)
+for every number and what may be quoted · [architecture.md](architecture.md)
+for the package boundaries and what each one buys.
 
 ## Phase status
 
@@ -34,9 +39,9 @@ auditable.
 | 14 | **Dashboard / product UI** (absorbs 18) | ✅ Complete | Built to a standard rather than built and later polished ([D-045](decision_log.md)). **The centre of the screen, where a risk score would normally go, holds three independent reads instead** ([D-050](decision_log.md)) — financial trends, model ranking and the filer's own words, each with its method and its evidence, with their disagreements directly beneath. The desk groups by **named reason** rather than ranking, because ordering companies would reintroduce the composite as a sort key ([D-051](decision_log.md)). Design system is theme configuration rather than CSS, numbers render monospace, and risk is never carried by colour alone; navigation is by URL so every workspace is bookmarkable ([D-052](decision_log.md)). Five pages including a navigation-level **Method & limits** that lists what the product will *not* show and why. Running on 202 real assessments over 163 companies; 18 view-model tests, one of which fails if a field named `score` or `confidence` ever reappears. Full report in [workspace_ui.md](workspace_ui.md) |
 | 15 | ~~Database / SQL architecture~~ | ➜ **Merged into 13** | Phase 13 must persist immutable drafts and separate analyst edits, which *is* a versioned schema with history queries. A database-architecture phase scheduled after the database exists invites rewriting a working schema to justify the phase ([D-045](decision_log.md)) |
 | 16 | ~~External API integration~~ | ✂ **Cut** | SEC has been integrated since Phase 5 and twelve phases of measurement have produced no open question a second provider would answer. It was in the plan because a generic roadmap has an integration phase. Reinstate on a real need; do not build it to complete a table ([D-045](decision_log.md)) |
-| 17 | **Pay the measurement debts** (reframed) | Not started | Consolidating suites that already run in CI is low value. The real work is what earlier phases deferred *and named*: re-run Phase 7 for real over the corpus (biases two Phase 11 rules); take [D-032](decision_log.md)'s eligibility-matched cohort; run the second synthesis provider past n=12; label Phase 10's recall; close A-09/A-11/A-13/A-14 ([D-045](decision_log.md)) |
+| 17 | **Pay the measurement debts** (reframed) | ✅ Complete — 4 of 5 paid | Consolidating suites that already run in CI is low value; the real work was what earlier phases deferred *and named* ([D-045](decision_log.md)). **Two of the five corrected claims this project had already published.** (1) **Phase 7 re-run for real** on all 202 corpus filings ([D-053](decision_log.md)): the reconstruction was *exact* on the distinction it claimed to preserve (522/522, 122/122, zero errors), but **two of its three stated bias directions were wrong** — `MODEL_ELEVATED_HEALTH_QUIET` never fires at all, and `DIMENSION_DISAGREEMENT` was biased downward, not upward. One published interval moves and moves *against* the layer: `MODEL_AND_HEALTH` is now −0.032 [−0.065, −0.006]. Everything not touching health is identical to four decimals, so Phase 11's headline never depended on the shortcut. (2) **[D-032](decision_log.md)'s eligibility-matched cohort built** ([D-054](decision_log.md)) — BRD's own rule (≥$100M in 1980 dollars, CPI-adjusted) applied to **both** cohorts rather than an empirical size band applied to one. The size gap closes **14.53× → 0.96×** and the logistic model's confound gap goes **+0.047 → +0.0001** at ROC-AUC **0.817 [0.778, 0.851]** — the first bankruptcy figure here a model of the sampling design does not beat. Boosting's gap is unmoved (+0.021). (3) **Phase 10 recall labelled** ([D-055](decision_log.md)): **38.1% [20.8%, 59.1%]** relative to the sweep's reach, with an independent 8/8 precision re-confirmation — but six of twelve codes have no true instance in the pool, so it mostly characterises impairment detection. (4) **A-09, A-11, A-13, A-14 closed**: A-09 superseded by [D-013](decision_log.md) with its residual measured (23.6% of restatements exceed 5%); A-11 accepted as a proxy with a measured miss (any distress disclosure is followed by a petition only 64.1% of the time); A-13 validated pooled, invalidated per fold (9–43 events/fold); A-14 validated decisively — the real-world rate is **0.39%** against training base rates of 4.9–49.6%. **Not paid: the second synthesis provider**, blocked because `LLM_API_KEY` is empty. Full report in [measurement_debts.md](measurement_debts.md) |
 | 18 | ~~Product & UX polish~~ | ➜ **Merged into 14** | Separating "build the UI" from "make the UI good" is the arrangement that produces a UI built badly and then polished ([D-045](decision_log.md)) |
-| 19 | **Documentation, architecture & write-up** (absorbs 20) | Not started | Docs are maintained continuously, so this is a final pass plus the measured-results write-up Phase 20 used to hold ([D-045](decision_log.md)) |
+| 19 | **Documentation, architecture & write-up** (absorbs 20) | ✅ Complete | Docs were maintained continuously, so this was a final consistency pass plus the measured-results write-up Phase 20 used to hold ([D-045](decision_log.md)). Delivered: a rewritten `README.md` as the front door; **[architecture.md](architecture.md)** — nine package boundaries, each with what it buys and what breaking it would cost, re-derived from the import graph; **[measured_results.md](measured_results.md)** — every defensible figure in three tiers (quotable / quotable with its population named / not quotable), with the negative results as rows rather than footnotes; and **[explaining_the_project.md](explaining_the_project.md)** for the absorbed Phase 20 material ([D-056](decision_log.md)). `architecture_audit.md` is preserved as the Phase 1–7 artifact it is rather than rewritten, per [D-009](decision_log.md). **The three inherited items:** the headline change from [D-054](decision_log.md) was the largest stale claim in the repo — **five places across two documents** still said the within-cohort figures were the only defensible ones — and each is struck and replaced in place. The 17 `mypy` errors turned out to be **15 genuine typing defects and 2 absent libraries**, not "all optional-dependency paths"; `mypy --strict` is now clean on 79 files ([D-057](decision_log.md)). **The synthesis debt is still unpaid and still reported as unpaid.** The pass also found that [scope.md](scope.md) §6's demo-hold-out promise was never kept ([R-13](risks.md)), closed six assumptions whose validation plans had been executed and never written back, and found `architecture_audit.md`'s M-2 recommendation void — both libraries it proposed dropping are now imported by the library itself |
 | 20 | ~~Resume & interview preparation~~ | ➜ **Merged into 19** | A write-up of measured results is a section of the documentation phase, not a phase ([D-045](decision_log.md)) |
 
 ## Dependencies worth noting
@@ -57,4 +62,11 @@ flowchart LR
     P11 --> P12[12 Synthesis]
     P12 --> P13[13 Review + persistence]
     P13 --> P14[14 UI]
+    P9 --> P17[17 Measurement debts]
+    P10 --> P17
+    P11 --> P17
 ```
+
+Phase 17 depends on 9, 10 and 11 rather than on 14, because it re-measures what
+those three deferred. It changed no product behaviour, so nothing downstream of
+14 depends on it.

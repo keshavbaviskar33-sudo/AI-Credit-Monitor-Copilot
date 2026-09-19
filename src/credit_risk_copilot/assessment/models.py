@@ -49,6 +49,7 @@ citations stay pinned to content.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
 from enum import Enum
 
@@ -355,7 +356,7 @@ class Assessment(BaseModel):
     def of_kind(self, kind: EvidenceKind) -> tuple[EvidenceItem, ...]:
         return tuple(item for item in self.evidence if item.kind is kind)
 
-    def validate_citations(self, evidence_ids: object) -> tuple[str, ...]:
+    def validate_citations(self, evidence_ids: Iterable[object]) -> tuple[str, ...]:
         """The IDs in `evidence_ids` that this assessment does not contain.
 
         The mechanism behind FR-17, kept here rather than in Phase 12 so that

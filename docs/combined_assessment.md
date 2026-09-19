@@ -287,12 +287,23 @@ the first draft stamped a 2014 assessment with a 2015 filing date, and
    filings have a deteriorating dimension and its base rate is 0.495. Three
    rules could not fire on it at all. Rule incidence on a normal portfolio is
    unmeasured.
-2. **The health layer is reconstructed, not re-run** (§5). `IMPROVING`,
-   `STABLE` and `MIXED` are indistinguishable in the Phase 8 encoding, which
-   biases `DIMENSION_DISAGREEMENT` and `MODEL_ELEVATED_HEALTH_QUIET` upward and
-   health corroboration downward. Re-running Phase 7 over the corpus needs
-   company-facts fetches for 202 filers and is the single highest-value
-   follow-up.
+2. ~~**The health layer is reconstructed, not re-run**~~ — **paid in Phase 17
+   ([D-053](decision_log.md)), and two of the three biases declared here were
+   wrong.** All 202 filings were re-run for real. The reconstruction was
+   **exact** on the distinction it claimed to preserve (`deteriorating` 522/522,
+   `insufficient_data` 122/122, zero errors); every disagreement was inside the
+   collapsed class, where 242 dimensions were really `IMPROVING` and 96 really
+   `MIXED`. But `MODEL_ELEVATED_HEALTH_QUIET` never fires at all, so calling it
+   an upper bound was vacuous; `DIMENSION_DISAGREEMENT` was biased **downward**,
+   not upward (102 firings reconstructed, 110 real), because the rule is
+   symmetric and the collapse both suppresses and creates firings; and health
+   corroboration was indeed a lower bound, but the extra firings land in the
+   comparison cohort, so every health-based **lift falls** (`MODEL_AND_HEALTH`
+   1.538 → 1.444). One number in §6.2 moves and moves against the layer:
+   `MODEL_AND_HEALTH` is now −0.032 [−0.065, **−0.006**], an interval that no
+   longer touches zero. **Everything not touching health is identical to four
+   decimals**, so §6.2's headline does not depend on the shortcut. Full account
+   in [measurement_debts.md §2](measurement_debts.md).
 3. **The cohort confound is inherited, not solved.** Every precision figure
    sits on the population [D-032](decision_log.md) showed is separable on
    sampling design at least as well as on the label. The *differences* between

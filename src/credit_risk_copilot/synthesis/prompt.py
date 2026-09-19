@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from credit_risk_copilot.assessment.models import Assessment, EvidenceItem
 
@@ -38,7 +39,7 @@ from credit_risk_copilot.assessment.models import Assessment, EvidenceItem
 #: `output_config.format`, so the model cannot return prose, a code fence or a
 #: differently shaped object -- the parse either succeeds or the call failed,
 #: and there is no salvage path that guesses at malformed output.
-RESPONSE_SCHEMA: dict = {
+RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "headline": {
@@ -137,13 +138,16 @@ def _render_findings(assessment: Assessment) -> list[str]:
     if assessment.corroborations:
         lines.append("")
         lines.append("AGREEMENTS")
-        for finding in assessment.corroborations:
+        # A separate name from the contradiction loop above: the two collections
+        # hold different types, and reusing one variable made a genuine type
+        # error invisible for six phases (D-057).
+        for agreement in assessment.corroborations:
             lines.append(
-                f"- {finding.code.value}"
-                + (f" ({finding.dimension})" if finding.dimension else "")
-                + f": {finding.explanation}"
+                f"- {agreement.code.value}"
+                + (f" ({agreement.dimension})" if agreement.dimension else "")
+                + f": {agreement.explanation}"
             )
-            lines.append(f"  supported by: {', '.join(finding.supporting)}")
+            lines.append(f"  supported by: {', '.join(agreement.supporting)}")
     return lines
 
 
@@ -204,7 +208,7 @@ class SynthesisRequest:
     user: str
     #: JSON Schema the response must satisfy. Both providers accept standard
     #: JSON Schema; neither is allowed to return prose.
-    schema: dict
+    schema: dict[str, Any]
     max_tokens: int = 8000
 
 

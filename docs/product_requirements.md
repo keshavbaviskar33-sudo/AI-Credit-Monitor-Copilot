@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 — Phase 1 (Problem Definition & Product Design) |
-| **Date** | 2026-09-13 |
-| **Related** | [user_workflow.md](user_workflow.md) · [scope.md](scope.md) · [assumptions.md](assumptions.md) · [risks.md](risks.md) · [data_feasibility.md](data_feasibility.md) · [decision_log.md](decision_log.md) |
+| **Status** | v1.0 — written in Phase 1, amended through Phase 19. Every FR and SC below is now either built and verified, or explicitly superseded by a decision and struck in place ([D-009](decision_log.md)) |
+| **Date** | 2026-09-19 (created 2026-09-13) |
+| **Related** | [user_workflow.md](user_workflow.md) · [scope.md](scope.md) · [assumptions.md](assumptions.md) · [risks.md](risks.md) · [data_feasibility.md](data_feasibility.md) · [decision_log.md](decision_log.md) · [measured_results.md](measured_results.md) |
 
 > **This product is an analytical aid.** It produces *draft* assessments for a
 > qualified credit analyst. It does not make, recommend as final, or execute
@@ -100,7 +100,7 @@ investment signals.
 | Financial statement PDFs uploaded by the analyst | Analyst upload | ✅ | Text-based PDFs first; accuracy measured against XBRL where both exist |
 | Quarterly reports (10-Q) | SEC EDGAR | Later | Year-to-date cash-flow reporting needs special handling — [D-007](decision_log.md) |
 | Earnings call transcripts | Third party | Later | Licensing not yet evaluated |
-| News, market data, credit ratings | External providers | Later | Phase 16, behind an adapter layer |
+| News, market data, credit ratings | External providers | Later | ~~Phase 16, behind an adapter layer~~ — **Phase 16 was cut** ([D-045](decision_log.md)): twelve phases of measurement produced no open question a second provider would answer. Reinstate on a real need |
 | Scanned PDFs (OCR) | Analyst upload | Later | After text-based extraction is measured |
 
 ## 6. Outputs
@@ -134,8 +134,20 @@ vocabulary always includes `insufficient_data`.
 A list of monitored companies showing, per company: latest assessed period,
 review status (draft awaiting review / reviewed / superseded), analyst credit
 watch status, health flags that changed, unresolved contradictions, and data
-gaps. Default ordering prioritises *unreviewed deterioration and unresolved
-contradictions* rather than a single model probability.
+gaps. ~~Default ordering prioritises *unreviewed deterioration and unresolved
+contradictions* rather than a single model probability.~~
+
+> **Amended in Phase 14 ([D-051](decision_log.md)).** There is **no ordering at
+> all.** Ordering companies against each other requires a severity number, and
+> producing one would reintroduce the composite score [D-050](decision_log.md)
+> had just refused — as a sort key, where it is harder to notice. The desk
+> instead **groups by named reason**: six checkable facts about the assessment
+> (the filer states a severe condition; all three layers are elevated; the
+> layers disagree; the draft failed grounding; filing sections were unread;
+> nobody has reviewed it). A company appears under every reason that applies,
+> and within a bucket the order is alphabetical — as `ReviewStore.watchlist()`
+> already was, for the same reason. The intent of the struck sentence survives;
+> the mechanism does not.
 
 ## 7. Functional requirements (MVP)
 
@@ -163,12 +175,23 @@ Priority: **M** = must, **S** = should.
 ### ML, NLP, synthesis
 | ID | Requirement | P |
 |---|---|---|
-| FR-12 | ML model returns a probability, model version and local explanation (top drivers) | M |
+| FR-12 | ML model returns ~~a probability~~ **a ranking position**, model version and local explanation (top drivers) | M |
 | FR-13 | ML output carries applicability warnings when inputs are missing, out of training range, or the company is out of scope | M |
 | FR-14 | NLP signals include verbatim evidence that is verifiably present in the source text | M |
 | FR-15 | Contradictions between components are detected by explicit rules and listed | M |
 | FR-16 | One grounded LLM call produces the structured draft synthesis from supplied evidence only | M |
 | FR-17 | Synthesis claims that cite non-existent evidence IDs, or contain numbers not present in the evidence, are detected and flagged/rejected by code | M |
+
+> **FR-12 amended in Phase 19 ([D-033](decision_log.md), [D-056](decision_log.md)).**
+> The requirement was written before the model existed and asked for a
+> probability. The measured calibration slope is **0.326**, and the training
+> base rate is a property of the sampling design rather than of any portfolio,
+> so a number in [0, 1] here would be a probability in appearance only —
+> the most dangerous shape a risk output can take. `ModelExplanation` carries
+> `score_percentile` alongside `score`, a `NOT_CALIBRATED` caveat attaches
+> automatically outside [0.8, 1.25], and a `BASE_RATE_NOT_PORTFOLIO` caveat
+> fires unconditionally on this corpus. The *explanation* half of FR-12 is met
+> exactly as written.
 
 ### Review & audit
 | ID | Requirement | P |
@@ -246,8 +269,22 @@ performance figure is claimed before it is measured).
 | QM-03 | ML calibration (reliability curve, Brier score) | Reported; recalibrate if materially off | 9 |
 | QM-04 | NLP signal precision and recall on a hand-labelled sentence set | Baseline first | 10 |
 | QM-05 | Contradiction detection recall on constructed test cases | All constructed cases detected | 11 |
-| QM-06 | Synthesis quality: grounding pass rate, uncertainty stated when evidence is missing, consistency across repeated runs | Evaluation suite | 12, 17 |
-| QM-07 | Analyst can answer the five core questions (risk? why? support? conflicts? what to check?) from the company view | Scripted walkthrough (no access to real analysts — see A-01) | 14, 18 |
+| QM-06 | Synthesis quality: grounding pass rate, uncertainty stated when evidence is missing, consistency across repeated runs | Evaluation suite | 12 (~~17~~) |
+| QM-07 | Analyst can answer the five core questions (risk? why? support? conflicts? what to check?) from the company view | Scripted walkthrough (no access to real analysts — see A-01) | 14 (~~18~~ merged) |
+
+> **Where each stands, as of Phase 19.** QM-01 **97.2%** ([canonical_schema.md §12](canonical_schema.md)).
+> QM-02 **0.817 [0.778, 0.851]** eligibility-matched, beating every heuristic
+> baseline ([D-054](decision_log.md)) — the "must beat a transparent baseline"
+> bar is met, and the population must be named. QM-03 reported and **not**
+> recalibrated, deliberately ([D-033](decision_log.md)). QM-04 precision
+> **73.4%**, recall **38.1% relative to the sweep's reach** ([D-055](decision_log.md)).
+> QM-05 met by construction: seven contradiction rules, each unit-tested.
+> QM-06 grounding pass rate measured by fault injection — **0.000 false
+> positives, 100% detection** — with the *live* half at n=12 and one debt
+> unpaid. QM-07 exercised by headless render of every page against the real
+> store, not by a real analyst ([A-01](assumptions.md)). Phase columns for 17
+> and 18 are struck: [D-045](decision_log.md) reframed 17 and merged 18 into
+> 14. Full register: [measured_results.md](measured_results.md).
 
 ## 11. Major risks
 
@@ -268,6 +305,6 @@ Full register: [risks.md](risks.md). The most consequential for product design:
 |---|---|---|
 | Q1 | Which training dataset and target definition? (candidates and decision gate in [data_feasibility.md](data_feasibility.md)) | Phase 3 |
 | ~~Q2~~ | ~~Approve proposed decisions D-004 – D-011?~~ Resolved 2026-09-13: all accepted | — |
-| Q3 | LLM provider and budget | **Resolved (Phase 12):** Claude Opus 5 via the Anthropic SDK, confined to `synthesis/client.py` behind a protocol ([D-043](decision_log.md)); one call per assessment, no retries, ~$0.040 per assessment estimated at list price ([D-042](decision_log.md)). `anthropic` is the optional `llm` extra so the test suite runs without credentials |
-| Q4 | ~~UI framework (Streamlit vs. API + web frontend)~~ Resolved 2026-09-14: Streamlit for Phases 2-14 ([D-012](decision_log.md)); revisit at Phase 14 | Phase 2 (initial), Phase 14 (final) |
-| Q5 | Which industries to support after MVP, and what benchmark data exists for industry-aware thresholds | Phase 7+ |
+| Q3 | ~~LLM provider and budget~~ | **Resolved (Phase 12), then extended.** The provider is confined to `synthesis/client.py` behind a protocol ([D-043](decision_log.md)); one call per assessment, no retries, ~$0.040 per assessment estimated at list price ([D-042](decision_log.md)). ~~Claude Opus 5 via the Anthropic SDK~~ — **[D-044](decision_log.md) added a second client** when a Gemini credential arrived, and moved the prompt out of one vendor's envelope so a stored draft's fingerprint is provider-independent. The `llm` extra carries **both** SDKs; the only live run to date is `gemini-3.6-flash`, and `AnthropicSynthesisClient` has never made a call ([measurement_debts.md §5](measurement_debts.md)). The test suite runs without either |
+| Q4 | ~~UI framework (Streamlit vs. API + web frontend)~~ | **Closed (Phase 14).** Streamlit confirmed, not merely retained: [D-052](decision_log.md) built the design system as theme configuration rather than CSS and navigation as links rather than page switching. The revisit [D-012](decision_log.md) scheduled happened and found no requirement Streamlit failed to meet. The seam for a different renderer is the `workspace` package, which imports no UI framework |
+| Q5 | Which industries to support after MVP, and what benchmark data exists for industry-aware thresholds | **Still open.** Phase 9 measured industry separability at 0.87–0.95, and [D-054](decision_log.md) named industry matching as the next step and did not take it. [R-10](risks.md) stands |

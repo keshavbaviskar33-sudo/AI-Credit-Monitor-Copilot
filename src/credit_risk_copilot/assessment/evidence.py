@@ -55,6 +55,7 @@ from credit_risk_copilot.health.models import (
 from credit_risk_copilot.nlp.models import (
     Assertion,
     NarrativeRiskReport,
+    NarrativeRiskSignal,
     RiskSignalCode,
     Specificity,
 )
@@ -550,7 +551,7 @@ def narrative_evidence(report: NarrativeRiskReport) -> tuple[EvidenceItem, ...]:
     self-contradiction rule needs both moods present to fire at all.
     """
     items: list[EvidenceItem] = []
-    grouped: dict[tuple[RiskSignalCode, Assertion], list] = {}
+    grouped: dict[tuple[RiskSignalCode, Assertion], list[NarrativeRiskSignal]] = {}
     for signal in report.signals:
         grouped.setdefault((signal.code, signal.assertion), []).append(signal)
 

@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 — Phase 1 |
-| **Date** | 2026-09-13 |
-| **Related** | [product_requirements.md](product_requirements.md) · [scope.md](scope.md) |
+| **Status** | v1.0 — written in Phase 1, **implemented and verified in Phases 13–14**. §5's vocabulary confirmed by [D-049](decision_log.md); §6's lifecycle is *derived, never stored* ([D-047](decision_log.md)); four of §7's five measures are now properties of the code ([workspace_ui.md §7](workspace_ui.md)) |
+| **Date** | 2026-09-19 (created 2026-09-13) |
+| **Related** | [product_requirements.md](product_requirements.md) · [scope.md](scope.md) · [review_and_persistence.md](review_and_persistence.md) · [workspace_ui.md](workspace_ui.md) |
 
 ---
 

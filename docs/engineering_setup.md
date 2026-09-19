@@ -28,9 +28,15 @@ exist and nothing requires a compiler on this machine.
 
 All 64 resolved packages installed from prebuilt wheels with no source
 builds. **Conclusion: Python 3.12 is confirmed compatible with every library
-currently anticipated through Phase 15.** This is a point-in-time check —
-re-run it (`uv sync --all-extras` in a scratch venv) if a phase turns out to
-need a library not listed here.
+currently anticipated through ~~Phase 15~~ the end of the project.** This was a
+point-in-time check when written, with the instruction to re-run it
+(`uv sync --all-extras` in a scratch venv) if a phase needed a library not
+listed here.
+
+> **Held, and it is worth saying so (Phase 19).** All twenty phases ran on this
+> runtime. Two libraries were added after this check — `shap` in Phase 9 and
+> `google-genai` in Phase 12 — and neither needed a different Python.
+> [A-19](assumptions.md) is closed on that basis.
 
 ## 2. Toolchain
 

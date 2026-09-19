@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -52,6 +53,7 @@ from credit_risk_copilot.financials.history import FilingRefLike, accessions_wit
 from credit_risk_copilot.financials.models import CanonicalFact, CanonicalFilingFacts
 from credit_risk_copilot.financials.resolver import resolve_filing
 from credit_risk_copilot.health import analyze_financial_health
+from credit_risk_copilot.health.models import FinancialHealthReport
 from credit_risk_copilot.health.thresholds import DEFAULT_ANALYSIS_WINDOW
 from credit_risk_copilot.modeling.contract import (
     HorizonPolicy,
@@ -139,22 +141,51 @@ class _FilingResolver:
         return resolved
 
 
-def build_company_observations(
+@dataclass(frozen=True)
+class FilingAnalysis:
+    """One filing's point-in-time analysis, before it is labelled or encoded.
+
+    `Observation` keeps only what a model consumes, and `build_features`
+    flattens each Phase 7 dimension to a single deteriorating / not / unknown
+    flag. Anything downstream that needs the *report* -- its `MIXED` and
+    `IMPROVING` statuses, its per-ratio trends, its evidence -- cannot get it
+    back from a built observation. Emitting the analysis alongside the
+    observation is what lets a consumer read the real report without
+    re-implementing the point-in-time loop above, which is the only place the
+    leakage contract is enforced.
+    """
+
+    cik: int
+    company: str
+    accession: str
+    form: str
+    cutoff: date
+    period_label: str
+    facts: dict[tuple[str, str], CanonicalFact]
+    ratio_history: dict[str, tuple[RatioResult, ...]]
+    report: FinancialHealthReport
+    contributing_accessions: tuple[str, ...]
+
+
+def analyse_company_filings(
     *,
     company_facts: dict[str, Any],
     filings: Sequence[FilingRefLike],
     cik: int,
     company: str,
-    events: EventTable,
-    horizon: HorizonPolicy,
     analysis_window: int | None = DEFAULT_ANALYSIS_WINDOW,
-) -> tuple[list[Observation], list[SkippedObservation]]:
-    """One company's observations, one per annual filing that supports a row."""
+) -> tuple[list[FilingAnalysis], list[SkippedObservation]]:
+    """Run Phases 5-7 point-in-time, once per annual filing.
+
+    Everything in the module docstring's steps 1-5 happens here; labelling
+    (step 6) and the leakage assertion (step 7) belong to the caller, because
+    they need an event table and the filing dates respectively.
+    """
     resolver = _FilingResolver(company_facts, cik, company)
     ordered = sorted(filings, key=lambda ref: (ref.filed, ref.accession))
     filing_dates = {ref.accession: date.fromisoformat(ref.filed) for ref in ordered}
 
-    observations: list[Observation] = []
+    analyses: list[FilingAnalysis] = []
     skipped: list[SkippedObservation] = []
 
     for index, trigger in enumerate(ordered):
@@ -197,25 +228,67 @@ def build_company_observations(
         report = analyze_financial_health(company, ratio_history, analysis_window=analysis_window)
         latest_period = report.period_label or periods[-1]
 
-        outcome = events.outcome(cik, cutoff, horizon)
-        features = build_features(
-            facts=facts,
-            period_label=latest_period,
-            ratio_history=ratio_history,
-            report=report,
+        analyses.append(
+            FilingAnalysis(
+                cik=cik,
+                company=company,
+                accession=trigger.accession,
+                form=trigger.form,
+                cutoff=cutoff,
+                period_label=latest_period,
+                facts=facts,
+                ratio_history=ratio_history,
+                report=report,
+                contributing_accessions=_contributing(facts, latest_period, ratio_history),
+            )
         )
 
-        key = ObservationKey(
-            cik=cik,
-            company=company,
-            prediction_date=cutoff,
-            information_cutoff=cutoff,
-            source_accession=trigger.accession,
-            source_form=trigger.form,
-            fiscal_period_label=latest_period,
-            contributing_accessions=_contributing(facts, latest_period, ratio_history),
+    return analyses, skipped
+
+
+def build_company_observations(
+    *,
+    company_facts: dict[str, Any],
+    filings: Sequence[FilingRefLike],
+    cik: int,
+    company: str,
+    events: EventTable,
+    horizon: HorizonPolicy,
+    analysis_window: int | None = DEFAULT_ANALYSIS_WINDOW,
+) -> tuple[list[Observation], list[SkippedObservation]]:
+    """One company's observations, one per annual filing that supports a row."""
+    analyses, skipped = analyse_company_filings(
+        company_facts=company_facts,
+        filings=filings,
+        cik=cik,
+        company=company,
+        analysis_window=analysis_window,
+    )
+    filing_dates = {ref.accession: date.fromisoformat(ref.filed) for ref in filings}
+
+    observations: list[Observation] = []
+    for analysis in analyses:
+        features = build_features(
+            facts=analysis.facts,
+            period_label=analysis.period_label,
+            ratio_history=analysis.ratio_history,
+            report=analysis.report,
         )
-        observation = Observation(key=key, features=features, outcome=outcome)
+        key = ObservationKey(
+            cik=analysis.cik,
+            company=analysis.company,
+            prediction_date=analysis.cutoff,
+            information_cutoff=analysis.cutoff,
+            source_accession=analysis.accession,
+            source_form=analysis.form,
+            fiscal_period_label=analysis.period_label,
+            contributing_accessions=analysis.contributing_accessions,
+        )
+        observation = Observation(
+            key=key,
+            features=features,
+            outcome=events.outcome(analysis.cik, analysis.cutoff, horizon),
+        )
         # The check, not the claim. Raises rather than logs: a leaking row
         # must never reach a model.
         observation.assert_no_future_information(filing_dates)

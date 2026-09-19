@@ -314,7 +314,7 @@ def run_walk_forward(
             )
             # An indicator column exists only when the *training* rows had a
             # missing value there, so the two matrices can disagree in width.
-            x_test = _align_columns(x_test, x_train.shape[1])
+            x_test = align_columns(x_test, x_train.shape[1])
             y_train = labels_array(train_observations)
             if len(np.unique(y_train)) < 2:
                 continue
@@ -337,12 +337,17 @@ def run_walk_forward(
     return np.array(all_indices, dtype=int), np.array(all_scores, dtype=float), per_fold
 
 
-def _align_columns(matrix: np.ndarray, width: int) -> np.ndarray:
+def align_columns(matrix: np.ndarray, width: int) -> np.ndarray:
     """Pad or trim `matrix` to `width` columns, padding with 0.0.
 
     A padded indicator column means "not missing", which is the correct
     default: the column only exists because some training row lacked the
     feature, and a test row that has it is genuinely not missing.
+
+    Public because every caller that builds a train and a test design matrix
+    separately needs it, and the one that reimplemented it handled only the
+    padding half -- which raises on any panel where the test rows are the
+    sparser of the two.
     """
     if matrix.shape[1] == width:
         return matrix

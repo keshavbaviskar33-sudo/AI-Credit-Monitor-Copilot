@@ -34,10 +34,16 @@ test suite stops being run.
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from credit_risk_copilot.synthesis.prompt import SynthesisRequest
 from credit_risk_copilot.synthesis.schema import DraftSynthesis
+
+if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
+    # `google-genai` is an optional extra, so the return type of
+    # `GeminiSynthesisClient.render` can be named for a type checker without
+    # making the import a runtime requirement of this module.
+    from google.genai.types import GenerateContentConfig
 
 
 class SynthesisError(RuntimeError):
@@ -72,7 +78,7 @@ def parse_draft(payload: str) -> DraftSynthesis:
         raise SynthesisError(f"response did not match the draft schema: {error}") from error
 
 
-def render_anthropic(request: SynthesisRequest, model: str) -> dict:
+def render_anthropic(request: SynthesisRequest, model: str) -> dict[str, Any]:
     """The Messages API request a prompt becomes.
 
     A module-level function rather than a client method because it is a pure
@@ -114,9 +120,10 @@ class AnthropicSynthesisClient:
                 "the `anthropic` package is required for live synthesis;"
                 " install the project's `llm` extra"
             ) from error
-        self._client = anthropic.Anthropic(
-            max_retries=0, **({"api_key": api_key} if api_key else {})
-        )
+        # Passed positionally rather than by unpacking a dict: `**{...}` erases
+        # the keyword's type, so a wrong argument name would reach the SDK
+        # unchecked. `None` is the SDK's own "read the environment" default.
+        self._client = anthropic.Anthropic(max_retries=0, api_key=api_key)
         self._model = model
 
     @property
@@ -217,12 +224,6 @@ class GeminiSynthesisClient:
       rather than a `refusal` stop reason.
 
     The default model is a flash tier rather than a pro one, which is a
-    deployment fact and not a quality judgement: the pro models return
-    `RESOURCE_EXHAUSTED` with a free-tier limit of zero, so the default is the
-    most capable model the credential can actually reach. Pass `model=` to
-    override on a paid key.
-
-    The default model is a flash tier rather than a pro one, which is a
     deployment fact and not a quality judgement: on a free credential the pro
     models return `RESOURCE_EXHAUSTED` with a stated limit of zero, so the
     default is the most capable model an ordinary key can actually reach.
@@ -245,14 +246,17 @@ class GeminiSynthesisClient:
             ) from error
         truststore.inject_into_ssl()
         self._genai = genai
-        self._client = genai.Client(**({"api_key": api_key} if api_key else {}))
+        # By keyword rather than by unpacking a dict, for the reason the
+        # Anthropic client gives: `**{...}` erases the keyword's type. `None`
+        # is the SDK's own default and means "read the environment".
+        self._client = genai.Client(api_key=api_key)
         self._model = model
 
     @property
     def model(self) -> str:
         return self._model
 
-    def render(self, request: SynthesisRequest):
+    def render(self, request: SynthesisRequest) -> GenerateContentConfig:
         from google.genai import types
 
         return types.GenerateContentConfig(
